@@ -2,24 +2,21 @@
   <head>
     <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>关于 | 旅の途中</title>
+<title>leetcode93. 复原IP地址 | 旅の途中</title>
 <link rel="shortcut icon" href="https://cknightx.github.io/favicon.ico?v=1618385060203">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cknightx.github.io/styles/main.css">
-<link rel="alternate" type="application/atom+xml" title="关于 | 旅の途中 - Atom Feed" href="https://cknightx.github.io/atom.xml">
+<link rel="alternate" type="application/atom+xml" title="leetcode93. 复原IP地址 | 旅の途中 - Atom Feed" href="https://cknightx.github.io/atom.xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
 
 
 
-    <meta name="description" content="
-欢迎来到我的小站呀，很高兴遇见你！🤝
-
-🏠 关于本站
-👨‍💻 博主是谁
-⛹ 兴趣爱好
-📬 联系我呀
-..." />
-    <meta name="keywords" content="" />
+    <meta name="description" content="这题就是回溯，但是看面经考察还蛮频繁的，所以记录一下。
+class Solution {
+public:
+    vector&lt;string&gt; res;
+    vector&lt;string&gt; restoreIpAdd..." />
+    <meta name="keywords" content="算法" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
     <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
   </head>
@@ -81,46 +78,85 @@
         <div class="post-detail">
           <article class="post">
             <h2 class="post-title">
-              关于
+              leetcode93. 复原IP地址
             </h2>
             <div class="post-info">
               <span>
-                2019-01-25
+                2021-04-14
               </span>
               <span>
-                1 min read
+                2 min read
               </span>
+              
+                <a href="https://cknightx.github.io/tag/IljIGIEjm/" class="post-tag">
+                  # 算法
+                </a>
               
             </div>
             
             <div class="post-content-wrapper">
               <div class="post-content">
-                <blockquote>
-<p>欢迎来到我的小站呀，很高兴遇见你！🤝</p>
-</blockquote>
-<h2 id="关于本站">🏠 关于本站</h2>
-<h2 id="博主是谁">👨‍💻 博主是谁</h2>
-<h2 id="兴趣爱好">⛹ 兴趣爱好</h2>
-<h2 id="联系我呀">📬 联系我呀</h2>
+                <p>这题就是回溯，但是看面经考察还蛮频繁的，所以记录一下。</p>
+<pre><code class="language-c++">class Solution {
+public:
+    vector&lt;string&gt; res;
+    vector&lt;string&gt; restoreIpAddresses(string s) {
+        if (s.size()&gt;12 || s.size()&lt;4) return {};
+        vector&lt;string&gt; tmp;
+        dfs(s,0,tmp);
+        return res;
+    }
+    void dfs(const string&amp; s,int index,vector&lt;string&gt;&amp; tmp)
+    {
+        // 超过了4段，guna！
+        if (tmp.size()&gt;4) return;
+        // 处理完整个串，且刚好有4段，说明得到了一个正确结果
+        if (index&gt;=s.size() &amp;&amp; tmp.size()==4)
+        {
+            string ip_address;
+            for (int i=0;i&lt;tmp.size()-1;++i)
+            {
+                ip_address.append(tmp[i]);
+                ip_address.push_back('.');
+            }
+            ip_address.append(tmp.back());
+            res.push_back(ip_address);
+            return;
+        }
+        // 每次尝试选取1-3个字符作为一段
+        for (int i=1;i&lt;=3;++i)
+        {
+            if (index+i&gt;s.size()) break;
+            auto token=s.substr(index,i);
+            // 排除xxx.011.xxx
+            if (token.size()&gt;1 &amp;&amp; token[0]=='0') break;3
+            // 排除xxx.512.xxx
+            if (stoi(token)&gt;255) break;
+            tmp.push_back(token);
+            dfs(s,index+i,tmp);
+            tmp.pop_back();
+        }
+    }
+};
+</code></pre>
 
               </div>
               <div class="toc-container">
-                <ul class="markdownIt-TOC">
-<li>
-<ul>
-<li><a href="#%E5%85%B3%E4%BA%8E%E6%9C%AC%E7%AB%99">🏠 关于本站</a></li>
-<li><a href="#%E5%8D%9A%E4%B8%BB%E6%98%AF%E8%B0%81">👨‍💻 博主是谁</a></li>
-<li><a href="#%E5%85%B4%E8%B6%A3%E7%88%B1%E5%A5%BD">⛹ 兴趣爱好</a></li>
-<li><a href="#%E8%81%94%E7%B3%BB%E6%88%91%E5%91%80">📬 联系我呀</a></li>
-</ul>
-</li>
-</ul>
-
+                
               </div>
             </div>
           </article>
         </div>
 
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://cknightx.github.io/post/lru-yu-lfu-suan-fa-shi-xian/">
+              <h3 class="post-title">
+                LRU与LFU算法实现
+              </h3>
+            </a>
+          </div>
         
 
         

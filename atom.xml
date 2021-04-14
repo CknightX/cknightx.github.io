@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://cknightx.github.io</id>
     <title>旅の途中</title>
-    <updated>2021-04-14T06:53:32.890Z</updated>
+    <updated>2021-04-14T07:24:23.046Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://cknightx.github.io"/>
     <link rel="self" href="https://cknightx.github.io/atom.xml"/>
@@ -10,6 +10,57 @@
     <logo>https://cknightx.github.io/images/avatar.png</logo>
     <icon>https://cknightx.github.io/favicon.ico</icon>
     <rights>All rights reserved 2021, 旅の途中</rights>
+    <entry>
+        <title type="html"><![CDATA[leetcode93. 复原IP地址]]></title>
+        <id>https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/</id>
+        <link href="https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/">
+        </link>
+        <updated>2021-04-14T07:17:03.000Z</updated>
+        <content type="html"><![CDATA[<p>这题就是回溯，但是看面经考察还蛮频繁的，所以记录一下。</p>
+<pre><code class="language-c++">class Solution {
+public:
+    vector&lt;string&gt; res;
+    vector&lt;string&gt; restoreIpAddresses(string s) {
+        if (s.size()&gt;12 || s.size()&lt;4) return {};
+        vector&lt;string&gt; tmp;
+        dfs(s,0,tmp);
+        return res;
+    }
+    void dfs(const string&amp; s,int index,vector&lt;string&gt;&amp; tmp)
+    {
+        // 超过了4段，guna！
+        if (tmp.size()&gt;4) return;
+        // 处理完整个串，且刚好有4段，说明得到了一个正确结果
+        if (index&gt;=s.size() &amp;&amp; tmp.size()==4)
+        {
+            string ip_address;
+            for (int i=0;i&lt;tmp.size()-1;++i)
+            {
+                ip_address.append(tmp[i]);
+                ip_address.push_back('.');
+            }
+            ip_address.append(tmp.back());
+            res.push_back(ip_address);
+            return;
+        }
+        // 每次尝试选取1-3个字符作为一段
+        for (int i=1;i&lt;=3;++i)
+        {
+            if (index+i&gt;s.size()) break;
+            auto token=s.substr(index,i);
+            // 排除xxx.011.xxx
+            if (token.size()&gt;1 &amp;&amp; token[0]=='0') break;3
+            // 排除xxx.512.xxx
+            if (stoi(token)&gt;255) break;
+            tmp.push_back(token);
+            dfs(s,index+i,tmp);
+            tmp.pop_back();
+        }
+    }
+};
+</code></pre>
+]]></content>
+    </entry>
     <entry>
         <title type="html"><![CDATA[LRU与LFU算法实现]]></title>
         <id>https://cknightx.github.io/post/lru-yu-lfu-suan-fa-shi-xian/</id>
