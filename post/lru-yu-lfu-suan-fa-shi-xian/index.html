@@ -1,0 +1,326 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LRU与LFU算法实现 | Gridea</title>
+<link rel="shortcut icon" href="https://cknightx.github.io/favicon.ico?v=1618382912659">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cknightx.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="LRU与LFU算法实现 | Gridea - Atom Feed" href="https://cknightx.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="LRU
+LRU(Least Recently Used)，即最近最少使用。其主要思想是：如果数据最近被访问过，那么将来被访问的几率也更高。
+使用双向链表存储，用unordered_map作索引，以实现O(1)的查询和置换。
+using No..." />
+    <meta name="keywords" content="操作系统" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://cknightx.github.io">
+  <img class="avatar" src="https://cknightx.github.io/images/avatar.png?v=1618382912659" alt="">
+  </a>
+  <h1 class="site-title">
+    Gridea
+  </h1>
+  <p class="site-description">
+    温故而知新
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              LRU与LFU算法实现
+            </h2>
+            <div class="post-info">
+              <span>
+                2021-04-14
+              </span>
+              <span>
+                5 min read
+              </span>
+              
+                <a href="https://cknightx.github.io/tag/NQui_4wp5/" class="post-tag">
+                  # 操作系统
+                </a>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="lru">LRU</h1>
+<p>LRU(Least Recently Used)，即最近最少使用。其主要思想是：如果数据最近被访问过，那么将来被访问的几率也更高。<br>
+使用双向链表存储，用unordered_map作索引，以实现O(1)的查询和置换。</p>
+<pre><code class="language-c++">using Node = pair&lt;int, int&gt;;
+
+class LRUCache
+{
+public:
+	LRUCache(int capacity)
+		:capacity_(capacity){}
+	void set(int key,int value)
+	{
+		auto iter = mp_.find(key);
+		// 在缓存中
+		if (iter != mp_.end())
+		{
+			// 将页面移动至链表头部
+			list_.erase(iter-&gt;second);
+			list_.emplace_back(key, value);
+			mp_[key] = list_.begin();
+		}
+		// 不在缓存中
+		else
+		{
+			// 缓存空间满
+			if (list_.size() &gt;= capacity_)
+			{
+				// 删除链表尾部页面，以及mp中的缓存
+				mp_.erase(list_.back().first);
+				list_.pop_back();
+			}
+			// 装入新页面
+			list_.emplace_front(key, value);
+			mp_[key] = list_.begin();
+		}
+	}
+	int get(int key)
+	{
+		auto iter = mp_.find(key);
+		// 页面不存在
+		if (iter == mp_.end())
+		{
+			return -1;
+		}
+		// 页面存在，要将其移动至链表头部
+		list_.emplace_front(key, iter-&gt;second-&gt;second);
+		list_.erase(iter-&gt;second);
+
+		mp_[key] = list_.begin();
+		return iter-&gt;second-&gt;second;
+	}
+private:
+	int capacity_;
+	int node_num_;
+	list&lt;Node&gt; list_;
+	unordered_map&lt;int, list&lt;Node&gt;::iterator&gt; mp_;
+};
+int main()
+{
+	LRUCache lru(2);
+	lru.set(1, 1);
+	lru.set(2, 2);
+	cout &lt;&lt; lru.get(1)&lt;&lt;endl;
+	lru.set(3, 3);
+	cout &lt;&lt; lru.get(2)&lt;&lt;endl;
+	lru.set(4, 4);
+	cout &lt;&lt; lru.get(1)&lt;&lt;endl;
+	cout &lt;&lt; lru.get(3)&lt;&lt;endl;
+	cout &lt;&lt; lru.get(4)&lt;&lt;endl;
+	cin.get();
+    // 1 -1 -1 3 4
+}
+</code></pre>
+<h1 id="lfu">LFU</h1>
+<p>LFU(Least frequently used)，最不经常使用。其主要思想是：如果一个数据在最近一段时间内使用次数很少，那么在将来一段时间内被使用的可能性也很小。<br>
+使用双ordered_map，一个用来查找对应页面，一个用来查找对应计数的页面链表</p>
+<pre><code class="language-c++">struct Node
+{
+	int key, value, count;
+	Node(int k,int v,int c):key(k),value(v),count(c){}
+};
+class LFUCache
+{
+public:
+	LFUCache(int capacity)
+		:capacity_(capacity){}
+	int get(int key)
+	{
+		auto iter = mp_key.find(key);
+		// 页面存在
+		if (iter != mp_key.end())
+		{
+			int cnt = iter-&gt;second-&gt;count;
+			int val = iter-&gt;second-&gt;value;
+			// 访问次数+1，放到对应的链表头部
+			mp_count[cnt + 1].emplace_front(iter-&gt;second-&gt;key,val, cnt + 1);
+			mp_count[cnt].erase(iter-&gt;second);
+			// 更新最小访问次数，如果访问为N次的页面已经全部被移除，则最小访问次数为N+1
+			if (min_count_ == cnt &amp;&amp; mp_count[cnt].empty())
+				++min_count_;
+			mp_key[key] = mp_count[cnt + 1].begin();
+			return val;
+		}
+		return -1;
+	}
+	void set(int key, int value)
+	{
+		auto iter = mp_key.find(key);
+		// 更新
+		if (iter != mp_key.end())
+		{
+			get(key);
+			auto new_pos_iter = mp_key[key];
+			new_pos_iter-&gt;value = value;
+		}
+		// 插入新节点
+		else
+		{
+			// 满了
+			if (mp_key.size() &gt;= capacity_)
+			{
+				// 删除计数最少且最早出现的
+				int need_delete_key = mp_count[min_count_].back().key;
+				mp_count[min_count_].pop_back();
+				mp_key.erase(need_delete_key);
+			}
+			// 新加入的引用计数为1
+			mp_count[1].emplace_front(key, value, 1);
+			mp_key[key] = mp_count[1].begin();
+			// 插入新节点，所以最小计数必然为1
+			min_count_ = 1;
+		}
+	}
+private:
+	unordered_map&lt;int, list&lt;Node&gt;::iterator&gt; mp_key;
+	unordered_map&lt;int, list&lt;Node&gt;&gt; mp_count;
+	int min_count_ = 1;
+	int capacity_;
+};
+
+int main()
+{
+	LFUCache lfu(2);
+	lfu.set(1, 1);
+	lfu.set(2, 2);
+	cout &lt;&lt; lfu.get(1) &lt;&lt; endl;
+	lfu.set(3, 3);
+	cout &lt;&lt; lfu.get(2) &lt;&lt; endl;
+	cout &lt;&lt; lfu.get(3) &lt;&lt; endl;
+	lfu.set(4, 4);
+	cout &lt;&lt; lfu.get(1) &lt;&lt; endl;
+	cout &lt;&lt; lfu.get(3) &lt;&lt; endl;
+	cout &lt;&lt; lfu.get(4) &lt;&lt; endl;
+	cin.get();
+	// 1 -1 3 -1 3 4
+}
+</code></pre>
+<h1 id="区别">区别</h1>
+<p>二者的区别主要在于，LRU以最近使用时间为参考，LFU以引用计数和最近使用时间两个维度为参考。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#lru">LRU</a></li>
+<li><a href="#lfu">LFU</a></li>
+<li><a href="#%E5%8C%BA%E5%88%AB">区别</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://cknightx.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>

@@ -2,7 +2,7 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://cknightx.github.io</id>
     <title>Gridea</title>
-    <updated>2021-04-14T01:04:43.744Z</updated>
+    <updated>2021-04-14T06:48:38.014Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://cknightx.github.io"/>
     <link rel="self" href="https://cknightx.github.io/atom.xml"/>
@@ -11,44 +11,170 @@
     <icon>https://cknightx.github.io/favicon.ico</icon>
     <rights>All rights reserved 2021, Gridea</rights>
     <entry>
-        <title type="html"><![CDATA[Test]]></title>
-        <id>https://cknightx.github.io/post/test/</id>
-        <link href="https://cknightx.github.io/post/test/">
+        <title type="html"><![CDATA[LRU与LFU算法实现]]></title>
+        <id>https://cknightx.github.io/post/lru-yu-lfu-suan-fa-shi-xian/</id>
+        <link href="https://cknightx.github.io/post/lru-yu-lfu-suan-fa-shi-xian/">
         </link>
-        <updated>2021-04-12T16:22:50.000Z</updated>
-        <content type="html"><![CDATA[<p>test1</p>
-]]></content>
-    </entry>
-    <entry>
-        <title type="html"><![CDATA[Hello Gridea]]></title>
-        <id>https://cknightx.github.io/post/hello-gridea/</id>
-        <link href="https://cknightx.github.io/post/hello-gridea/">
-        </link>
-        <updated>2018-12-11T16:00:00.000Z</updated>
-        <summary type="html"><![CDATA[<p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
-✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
-]]></summary>
-        <content type="html"><![CDATA[<p>👏  欢迎使用 <strong>Gridea</strong> ！<br>
-✍️  <strong>Gridea</strong> 一个静态博客写作客户端。你可以用它来记录你的生活、心情、知识、笔记、创意... ...</p>
-<!-- more -->
-<p><a href="https://github.com/getgridea/gridea">Github</a><br>
-<a href="https://gridea.dev/">Gridea 主页</a><br>
-<a href="http://fehey.com/">示例网站</a></p>
-<h2 id="特性">特性👇</h2>
-<p>📝  你可以使用最酷的 <strong>Markdown</strong> 语法，进行快速创作</p>
-<p>🌉  你可以给文章配上精美的封面图和在文章任意位置插入图片</p>
-<p>🏷️  你可以对文章进行标签分组</p>
-<p>📋  你可以自定义菜单，甚至可以创建外部链接菜单</p>
-<p>💻  你可以在 <strong>Windows</strong>，<strong>MacOS</strong> 或 <strong>Linux</strong> 设备上使用此客户端</p>
-<p>🌎  你可以使用 <strong>𝖦𝗂𝗍𝗁𝗎𝖻 𝖯𝖺𝗀𝖾𝗌</strong> 或 <strong>Coding Pages</strong> 向世界展示，未来将支持更多平台</p>
-<p>💬  你可以进行简单的配置，接入 <a href="https://github.com/gitalk/gitalk">Gitalk</a> 或 <a href="https://github.com/SukkaW/DisqusJS">DisqusJS</a> 评论系统</p>
-<p>🇬🇧  你可以使用<strong>中文简体</strong>或<strong>英语</strong></p>
-<p>🌁  你可以任意使用应用内默认主题或任意第三方主题，强大的主题自定义能力</p>
-<p>🖥  你可以自定义源文件夹，利用 OneDrive、百度网盘、iCloud、Dropbox 等进行多设备同步</p>
-<p>🌱 当然 <strong>Gridea</strong> 还很年轻，有很多不足，但请相信，它会不停向前 🏃</p>
-<p>未来，它一定会成为你离不开的伙伴</p>
-<p>尽情发挥你的才华吧！</p>
-<p>😘 Enjoy~</p>
+        <updated>2021-04-14T01:08:28.000Z</updated>
+        <content type="html"><![CDATA[<h1 id="lru">LRU</h1>
+<p>LRU(Least Recently Used)，即最近最少使用。其主要思想是：如果数据最近被访问过，那么将来被访问的几率也更高。<br>
+使用双向链表存储，用unordered_map作索引，以实现O(1)的查询和置换。</p>
+<pre><code class="language-c++">using Node = pair&lt;int, int&gt;;
+
+class LRUCache
+{
+public:
+	LRUCache(int capacity)
+		:capacity_(capacity){}
+	void set(int key,int value)
+	{
+		auto iter = mp_.find(key);
+		// 在缓存中
+		if (iter != mp_.end())
+		{
+			// 将页面移动至链表头部
+			list_.erase(iter-&gt;second);
+			list_.emplace_back(key, value);
+			mp_[key] = list_.begin();
+		}
+		// 不在缓存中
+		else
+		{
+			// 缓存空间满
+			if (list_.size() &gt;= capacity_)
+			{
+				// 删除链表尾部页面，以及mp中的缓存
+				mp_.erase(list_.back().first);
+				list_.pop_back();
+			}
+			// 装入新页面
+			list_.emplace_front(key, value);
+			mp_[key] = list_.begin();
+		}
+	}
+	int get(int key)
+	{
+		auto iter = mp_.find(key);
+		// 页面不存在
+		if (iter == mp_.end())
+		{
+			return -1;
+		}
+		// 页面存在，要将其移动至链表头部
+		list_.emplace_front(key, iter-&gt;second-&gt;second);
+		list_.erase(iter-&gt;second);
+
+		mp_[key] = list_.begin();
+		return iter-&gt;second-&gt;second;
+	}
+private:
+	int capacity_;
+	int node_num_;
+	list&lt;Node&gt; list_;
+	unordered_map&lt;int, list&lt;Node&gt;::iterator&gt; mp_;
+};
+int main()
+{
+	LRUCache lru(2);
+	lru.set(1, 1);
+	lru.set(2, 2);
+	cout &lt;&lt; lru.get(1)&lt;&lt;endl;
+	lru.set(3, 3);
+	cout &lt;&lt; lru.get(2)&lt;&lt;endl;
+	lru.set(4, 4);
+	cout &lt;&lt; lru.get(1)&lt;&lt;endl;
+	cout &lt;&lt; lru.get(3)&lt;&lt;endl;
+	cout &lt;&lt; lru.get(4)&lt;&lt;endl;
+	cin.get();
+    // 1 -1 -1 3 4
+}
+</code></pre>
+<h1 id="lfu">LFU</h1>
+<p>LFU(Least frequently used)，最不经常使用。其主要思想是：如果一个数据在最近一段时间内使用次数很少，那么在将来一段时间内被使用的可能性也很小。<br>
+使用双ordered_map，一个用来查找对应页面，一个用来查找对应计数的页面链表</p>
+<pre><code class="language-c++">struct Node
+{
+	int key, value, count;
+	Node(int k,int v,int c):key(k),value(v),count(c){}
+};
+class LFUCache
+{
+public:
+	LFUCache(int capacity)
+		:capacity_(capacity){}
+	int get(int key)
+	{
+		auto iter = mp_key.find(key);
+		// 页面存在
+		if (iter != mp_key.end())
+		{
+			int cnt = iter-&gt;second-&gt;count;
+			int val = iter-&gt;second-&gt;value;
+			// 访问次数+1，放到对应的链表头部
+			mp_count[cnt + 1].emplace_front(iter-&gt;second-&gt;key,val, cnt + 1);
+			mp_count[cnt].erase(iter-&gt;second);
+			// 更新最小访问次数，如果访问为N次的页面已经全部被移除，则最小访问次数为N+1
+			if (min_count_ == cnt &amp;&amp; mp_count[cnt].empty())
+				++min_count_;
+			mp_key[key] = mp_count[cnt + 1].begin();
+			return val;
+		}
+		return -1;
+	}
+	void set(int key, int value)
+	{
+		auto iter = mp_key.find(key);
+		// 更新
+		if (iter != mp_key.end())
+		{
+			get(key);
+			auto new_pos_iter = mp_key[key];
+			new_pos_iter-&gt;value = value;
+		}
+		// 插入新节点
+		else
+		{
+			// 满了
+			if (mp_key.size() &gt;= capacity_)
+			{
+				// 删除计数最少且最早出现的
+				int need_delete_key = mp_count[min_count_].back().key;
+				mp_count[min_count_].pop_back();
+				mp_key.erase(need_delete_key);
+			}
+			// 新加入的引用计数为1
+			mp_count[1].emplace_front(key, value, 1);
+			mp_key[key] = mp_count[1].begin();
+			// 插入新节点，所以最小计数必然为1
+			min_count_ = 1;
+		}
+	}
+private:
+	unordered_map&lt;int, list&lt;Node&gt;::iterator&gt; mp_key;
+	unordered_map&lt;int, list&lt;Node&gt;&gt; mp_count;
+	int min_count_ = 1;
+	int capacity_;
+};
+
+int main()
+{
+	LFUCache lfu(2);
+	lfu.set(1, 1);
+	lfu.set(2, 2);
+	cout &lt;&lt; lfu.get(1) &lt;&lt; endl;
+	lfu.set(3, 3);
+	cout &lt;&lt; lfu.get(2) &lt;&lt; endl;
+	cout &lt;&lt; lfu.get(3) &lt;&lt; endl;
+	lfu.set(4, 4);
+	cout &lt;&lt; lfu.get(1) &lt;&lt; endl;
+	cout &lt;&lt; lfu.get(3) &lt;&lt; endl;
+	cout &lt;&lt; lfu.get(4) &lt;&lt; endl;
+	cin.get();
+	// 1 -1 3 -1 3 4
+}
+</code></pre>
+<h1 id="区别">区别</h1>
+<p>二者的区别主要在于，LRU以最近使用时间为参考，LFU以引用计数和最近使用时间两个维度为参考。</p>
 ]]></content>
     </entry>
 </feed>
