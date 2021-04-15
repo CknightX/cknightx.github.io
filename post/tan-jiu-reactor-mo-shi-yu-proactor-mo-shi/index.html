@@ -1,0 +1,192 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>探究Reactor模式与Proactor模式 | 旅の途中</title>
+<link rel="shortcut icon" href="https://cknightx.github.io/favicon.ico?v=1618499371765">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@2.3.0/fonts/remixicon.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cknightx.github.io/styles/main.css">
+<link rel="alternate" type="application/atom+xml" title="探究Reactor模式与Proactor模式 | 旅の途中 - Atom Feed" href="https://cknightx.github.io/atom.xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Droid+Serif:400,700">
+
+
+
+    <meta name="description" content="Reactor
+
+注：很多网络库的实现并非刻板的遵循上图中的架构，例如muduo，将Handler和EventHandler以Channel类表示。
+
+Handler：本质上表示一种资源（文件描述符、socket描述符），该资源可以产生事件..." />
+    <meta name="keywords" content="" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+    <script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
+  </head>
+  <body>
+    <div class="main">
+      <div class="main-content">
+        <div class="site-header">
+  <a href="https://cknightx.github.io">
+  <img class="avatar" src="https://cknightx.github.io/images/avatar.png?v=1618499371765" alt="">
+  </a>
+  <h1 class="site-title">
+    旅の途中
+  </h1>
+  <p class="site-description">
+    a tale of melodies
+  </p>
+  <div class="menu-container">
+    
+      
+        <a href="/" class="menu">
+          首页
+        </a>
+      
+    
+      
+        <a href="/archives" class="menu">
+          归档
+        </a>
+      
+    
+      
+        <a href="/tags" class="menu">
+          标签
+        </a>
+      
+    
+      
+        <a href="/post/about" class="menu">
+          关于
+        </a>
+      
+    
+  </div>
+  <div class="social-container">
+    
+      
+    
+      
+    
+      
+    
+      
+    
+      
+    
+  </div>
+</div>
+
+        <div class="post-detail">
+          <article class="post">
+            <h2 class="post-title">
+              探究Reactor模式与Proactor模式
+            </h2>
+            <div class="post-info">
+              <span>
+                2021-04-15
+              </span>
+              <span>
+                4 min read
+              </span>
+              
+            </div>
+            
+            <div class="post-content-wrapper">
+              <div class="post-content">
+                <h1 id="reactor">Reactor</h1>
+<p><img src="https://i.loli.net/2021/04/15/TdoGwYXcmiNWRDn.png" alt="QQ图片20210415175812.png" loading="lazy"><br>
+注：很多网络库的实现并非刻板的遵循上图中的架构，例如muduo，将Handler和EventHandler以Channel类表示。</p>
+<ul>
+<li>Handler：本质上表示一种资源（文件描述符、socket描述符），该资源可以产生事件，所以也可以理解为事件源。</li>
+<li>Synchronous Event Demultiplexer：本身是一个系统调用，用于同时等待多个事件发生。对应于Linux下的IO多路复用机制：select、poll、epoll。</li>
+<li>Event Handler：事件处理器，与Handler绑定，指示当Handler产生事件时应如何去处理。</li>
+<li>Initiation Dispatcher：模式中的核心Reactor角色，提供了事件的注册和删除等设施。它通过Demultiplexer来等待Handler产生事件，一旦有事件产生，针对每个事件调用其对应的Event Handler完成事件处理。</li>
+</ul>
+<p>从一个Reactor模式网络库使用者的角度来看，它提供了这样一种功能：我告诉它感兴趣的事件（注册事件源），以及事件的处理方式（注册回调函数），当有事件源产生了事件时，Reactor会去调用对应事件的处理器，完成事件的处理。</p>
+<h1 id="proactor">Proactor</h1>
+<p>和Reactor模式的区别在于对于socket的读写操作是由谁来完成。Reactor模式下，监测到的事件是“可读”or“可写”。即事件处理的过程中需要包含主动对socket读取和写入的过程。而在Proactor模式下， 监测到的事件是“读取完毕”or“写入完毕”。事件处理过程不需要主动的读或写socket，这个读写过程已经由<strong>内核</strong>完成了。<br>
+这里可能会有疑问，诸如muduo这样的网络库，注册事件回调时也不用考虑对socket的读写，而是可以直接操作buffer中的数据呀。是这样没错，但是这个屁股是网络库帮你擦的，而不是内核，读写操作依然是在用户态线程中完成的。使用同步IO方式无法实现真正的Proactor模式，但是可以将之封装为与Proactor模式相同的接口，这样在用户的层面上就和Proactor模式的使用方法一致了。</p>
+<hr>
+<p>以下为个人理解部分：<br>
+为什么muduo和asio，注册的回调函数都是在数据已经被读取完毕的前提下，而muduo自称是reactor模式，boost自称是proactor模式呢？<br>
+asio提供了这样一个函数<code>asio::ip::tcp::socket::async_read_some</code>，第一个参数是读到的数据放在哪，第二个参数是读完了干啥。这是一个典型的proactor接口：我只关心“读取完毕”事件，所以注册过去的回调函数就是读完了干啥。而muduo则是通过注册onMessage函数，用户在注册该回调时，同样也是只用关心业务逻辑，读取的数据可以通过内置的buffer获取。但本质上，这是muduo提供给用户的封装好的更上层的接口。这个回调函数的实际意义是“每当收到客户端发来的消息之后应该干啥”，而不是“来了可读事件，我给你读完放到你指定的位置之后应该干啥”。muduo中与asio的<code>asio::ip::tcp::socket::async_read_some</code>同层次的应该是在TcpConnection中将对socket的同步读取与用户onMessage封装到一起后作为回调注册给channel的过程，这显然是一个reactor接口。</p>
+<p>其实也可以这么理解，asio实现的接口显然是proactor接口，而且在windows下使用iocp实现的asio确确实实是真正的proactor模式。在linux下，虽然不是真正的proactor，但是提供了和windows下一致的接口，所以属于模拟的proactor，其实本质就是reactor。只不过因为有真正的proactor再加上全平台一样的接口，所以常常就称之为proactor模式了。<br>
+而muduo只在linux下有实现，必然是reactor模型，但实际上封装出了类似于proactor的接口。</p>
+<p>再来个理解，asio中的调用形式是：执行一个异步的读，且给这个读一个回调函数读完了干啥。 而muduo是直接注册一个回调函数，告诉接受到消息了要干啥，但实际上经过层层包装，注册给channel的回调本质上还是有可读事件了应该干啥。</p>
+
+              </div>
+              <div class="toc-container">
+                <ul class="markdownIt-TOC">
+<li><a href="#reactor">Reactor</a></li>
+<li><a href="#proactor">Proactor</a></li>
+</ul>
+
+              </div>
+            </div>
+          </article>
+        </div>
+
+        
+          <div class="next-post">
+            <div class="next">下一篇</div>
+            <a href="https://cknightx.github.io/post/xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao/">
+              <h3 class="post-title">
+                详解TCP如何应对三次握手和四次挥手过程中的丢包
+              </h3>
+            </a>
+          </div>
+        
+
+        
+
+        <div class="site-footer">
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
+  <a class="rss" href="https://cknightx.github.io/atom.xml" target="_blank">
+    <i class="ri-rss-line"></i> RSS
+  </a>
+</div>
+
+      </div>
+    </div>
+
+    <script>
+      hljs.initHighlightingOnLoad()
+
+      let mainNavLinks = document.querySelectorAll(".markdownIt-TOC a");
+
+      // This should probably be throttled.
+      // Especially because it triggers during smooth scrolling.
+      // https://lodash.com/docs/4.17.10#throttle
+      // You could do like...
+      // window.addEventListener("scroll", () => {
+      //    _.throttle(doThatStuff, 100);
+      // });
+      // Only not doing it here to keep this Pen dependency-free.
+
+      window.addEventListener("scroll", event => {
+        let fromTop = window.scrollY;
+
+        mainNavLinks.forEach((link, index) => {
+          let section = document.getElementById(decodeURI(link.hash).substring(1));
+          let nextSection = null
+          if (mainNavLinks[index + 1]) {
+            nextSection = document.getElementById(decodeURI(mainNavLinks[index + 1].hash).substring(1));
+          }
+          if (section.offsetTop <= fromTop) {
+            if (nextSection) {
+              if (nextSection.offsetTop > fromTop) {
+                link.classList.add("current");
+              } else {
+                link.classList.remove("current");    
+              }
+            } else {
+              link.classList.add("current");
+            }
+          } else {
+            link.classList.remove("current");
+          }
+        });
+      });
+
+    </script>
+  </body>
+</html>
