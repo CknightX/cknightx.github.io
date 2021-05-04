@@ -1,276 +1,102 @@
+
 <!DOCTYPE html>
 <html>
+  <head>
+    
+<meta charset="utf-8" >
 
-<head>
-  <meta charset="UTF-8" />
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="keywords" content="">
-<meta name="description" content="a tale of melodies">
-<meta name="theme-color" content="">
 <title>详解TCP如何应对三次握手和四次挥手过程中的丢包 | 旅の途中</title>
-<link rel="shortcut icon" href="/favicon.ico?v=1620090971063">
-<link rel="stylesheet" href="/styles/main.css">
-<link rel="stylesheet" href="/media/css/pisces.css">
+<meta name="description" content="a tale of melodies">
 
-<link rel="stylesheet" href="/media/fonts/font-awesome.css">
-<link
-  href="//fonts.googleapis.com/css?family=Monda:300,300italic,400,400italic,700,700italic|Roboto Slab:300,300italic,400,400italic,700,700italic|Rosario:300,300italic,400,400italic,700,700italic|PT Mono:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext"
-  rel="stylesheet" type="text/css">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.0/animate.min.css">
 
-<link href="/media/hljs/styles/github.css"
-  rel="stylesheet">
-
-<script src="/media/hljs/highlight.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/velocity-animate@1.5.0/velocity.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/velocity-animate@1.5.0/velocity.ui.min.js"></script>
-
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css" integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous">
+<link rel="shortcut icon" href="https://cknightx.github.io/favicon.ico?v=1620091154423">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.10.0/katex.min.css">
+<link rel="stylesheet" href="https://cknightx.github.io/styles/main.css">
 
 
 
-  <meta name="description" content="详解TCP如何应对三次握手和四次挥手过程中的丢包" />
-  <meta name="keywords" content="网络" />
-</head>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.bootcss.com/highlight.js/9.12.0/highlight.min.js"></script>
 
-<body>
-  <div class="head-top-line"></div>
-  <div class="header-box">
-    
-<div class="pisces">
-  <header class="header  ">
-    <div class="blog-header box-shadow-wrapper bg-color " id="header">
-      <div class="nav-toggle" id="nav_toggle">
-        <div class="toggle-box">
-          <div class="line line-top"></div>
-          <div class="line line-center"></div>
-          <div class="line line-bottom"></div>
-        </div>
-      </div>
-      <div class="site-meta">       
-        <div class="site-title">
-          
-            <a href="/" class="brand">
-              <span>旅の途中</span>
-            </a>  
-          
-        </div>
-        
-      </div>
-      <nav class="site-nav" id="site_nav">
-        <ul id="nav_ul">
-          
-            
-            
-            <li class="nav-item ">
-              
-              
-                <a href="/" target="_self">
-                  <i class="fa fa-home"></i> 首页
-                </a>
-              
-            </li>
-          
-            
-            
-            <li class="nav-item ">
-              
-              
-                <a href="/archives/" target="_self">
-                  <i class="fa fa-archive"></i> 归档
-                </a>
-              
-            </li>
-          
-            
-            
-            <li class="nav-item ">
-              
-              
-                <a href="/tags/" target="_self">
-                  <i class="fa fa-tags"></i> 标签
-                </a>
-              
-            </li>
-          
-            
-            
-            <li class="nav-item ">
-              
-              
-                <a href="/post/about/" target="_self">
-                  <i class="fa fa-user"></i> 关于
-                </a>
-              
-            </li>
-          
-          
-        </ul>
-      </nav>
-    </div>
-  </header>
-</div>
 
-<script type="text/javascript"> 
- 
-  let showNav = true;
 
-  let navToggle = document.querySelector('#nav_toggle'),
-  siteNav = document.querySelector('#site_nav');
-  
-  function navClick() {
-    let sideBar = document.querySelector('.sidebar');
-    let navUl = document.querySelector('#nav_ul');
-    navToggle.classList.toggle('nav-toggle-active');
-    siteNav.classList.toggle('nav-menu-active');
-    if (siteNav.classList.contains('nav-menu-active')) {
-      siteNav.style = "height: " + (navUl.children.length * 42) +"px !important";
-    } else {
-      siteNav.style = "";
-    }
-  }
-
-  navToggle.addEventListener('click',navClick);  
-</script>
-  </div>
-  <div class="main-continer">
-    
-    <div
-      class="section-layout pisces ">
-      <div class="section-layout-wrapper">
-        
-
-<div class="sidebar">
-  
-    <div class="sidebar-box box-shadow-wrapper bg-color right-motion" id="sidebar">
-      
-      <div class="sidebar-body pisces" id="sidebar_body">
-        
-      </div>
-    </div>
-  
-</div>
-<script>
-  const SIDEBAR_TITLE_ACTIVE = 'sidebar-title-active';
-  const SIDEBAR_BODY_ACTIVE = 'sidebar-body-active';
-  const SLIDE_UP_IN = 'slide-up-in';
-
-  let sidebar = document.querySelector('#sidebar'),
-  tocSideBar = document.querySelector('#tocSideBar'),
-  metaSideBar = document.querySelector('#metaSideBar'),
-  postToc = document.querySelector('#post_toc'),
-  postSiteMeta = document.querySelector('#post_side_meta'),
-  sidebarTitle = document.querySelector('.sidebar-title'),
-  sidebarBody = document.querySelector('#sidebar_body');
-
-  tocSideBar && tocSideBar.addEventListener('click', (e) => {
-    toggleSidebar(e);
-  });
-
-  metaSideBar && metaSideBar.addEventListener('click', (e) => {
-    toggleSidebar(e);
-  });
-
-  function toggleSidebar(e) {
-    let currentTitle = document.querySelector("."+SIDEBAR_TITLE_ACTIVE);
-    if (currentTitle == e.srcElement) {
-      return ;
-    }
-    let current, showElement, hideElement;
-    if (e.srcElement == metaSideBar) {
-      showElement = postSiteMeta;
-      hideElement = postToc;
-    } else if (e.srcElement == tocSideBar){
-      showElement = postToc;
-      hideElement = postSiteMeta;
-    }
-    currentTitle.classList.remove(SIDEBAR_TITLE_ACTIVE);
-    e.srcElement.classList.add(SIDEBAR_TITLE_ACTIVE);
-
-    window.Velocity(hideElement, 'stop');
-    window.Velocity(hideElement, 'transition.slideUpOut', {
-      display: 'none',
-      duration: 200,
-      complete: function () {
-        window.Velocity(showElement, 'transition.slideDownIn', {
-          duration: 200
-        });
-      }
-    })
-    hideElement.classList.remove(SIDEBAR_BODY_ACTIVE);
-    showElement.classList.add(SIDEBAR_BODY_ACTIVE);
-  }
-
-  postToc && postToc.addEventListener('transitionend', function() {
-    this.classList.remove(SLIDE_UP_IN);
-  });
-
-  if (sidebarBody) {
-    if (sidebarBody.classList.contains('pisces') || sidebarBody.classList.contains('gemini')) {
-      let hasFix = false;
-      let scrollEl = document.querySelector('.main-continer');
-      let limitTop = document.querySelector('#nav_ul').children.length * 42 + 162;
-      window.addEventListener('scroll', function(e) {
-        if (document.scrollingElement.scrollTop >= limitTop) {
-          if (!hasFix) {
-            sidebar.classList.add('sidebar-fixed');
-            hasFix = true;
-          }
-        } else {
-          if (hasFix) {
-            sidebar.classList.remove('sidebar-fixed');
-            hasFix = false;
-          }
-        }
-      });
-    }
-  }
-  
-</script>
-        <div class="section-box box-shadow-wrapper">
-          <div class="section bg-color post post-page">
-            <header class="post-header">
-  <h1 class="post-title">
-    <a class="post-title-link" href="https://cknightx.github.io/post/xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao/">
-      详解TCP如何应对三次握手和四次挥手过程中的丢包
-    </a>
-  </h1>
-  <div class="post-meta">
-    
-    <span class="meta-item pc-show">
-      <i class="fa fa-calendar-o"></i>
-      <span>发布于</span>
-      <span>2021-04-14</span>
-      <span class="post-meta-divider pc-show">|</span>
-    </span>
-    
-    <span class="meta-item">
-      <i class="fa fa-folder-o"></i>
-      <span class="pc-show">分类于</span>
-      
-      
-      <a href="https://cknightx.github.io/tag/_lSk0csRV/">
-        <span>网络</span>
+  </head>
+  <body>
+    <div id="app" class="main">
+      <div class="site-header-container">
+  <div class="site-header">
+    <div class="left">
+      <a href="https://cknightx.github.io">
+        <img class="avatar" src="https://cknightx.github.io/images/avatar.png?v=1620091154423" alt="" width="32px" height="32px">
       </a>
-      
-      
-    </span>
-    <span class="post-meta-divider">|</span>
-    
-    <span class="meta-item">
-      <i class="fa fa-clock-o"></i>
-      <span>3分钟</span>
-    </span>
-    <span class="meta-item">
-      <span class="post-meta-divider">|</span>
-      <i class="fa fa-file-word-o"></i>
-      <span>634<span class="pc-show">字数</span></span>
-    </span>
-    
+      <a href="https://cknightx.github.io">
+        <h1 class="site-title">旅の途中</h1>
+      </a>
+    </div>
+    <div class="right">
+      <transition name="fade">
+        <i class="icon" :class="{ 'icon-close-outline': menuVisible, 'icon-menu-outline': !menuVisible }" @click="menuVisible = !menuVisible"></i>
+      </transition>
+    </div>
   </div>
-</header>
-            <div class="post-body next-md-body" id="post_body">
-              <figure data-type="image" tabindex="1"><img src="https://i.loli.net/2021/04/14/PFfjywQZ7CcnRpG.png" alt="3.png" loading="lazy"></figure>
+</div>
+
+<transition name="fade">
+  <div class="menu-container" style="display: none;" v-show="menuVisible">
+    <div class="menu-list">
+      
+        
+          <a href="/" class="menu purple-link">
+            首页
+          </a>
+        
+      
+        
+          <a href="/archives" class="menu purple-link">
+            归档
+          </a>
+        
+      
+        
+          <a href="/tags" class="menu purple-link">
+            标签
+          </a>
+        
+      
+        
+          <a href="/post/about" class="menu purple-link">
+            关于
+          </a>
+        
+      
+    </div>
+  </div>
+</transition>
+
+
+      <div class="content-container">
+        <div class="post-detail">
+          
+          <h2 class="post-title">详解TCP如何应对三次握手和四次挥手过程中的丢包</h2>
+          <div class="post-info post-detail-info">
+            <span><i class="icon-calendar-outline"></i> 2021-04-14</span>
+            
+              <span>
+                <i class="icon-pricetags-outline"></i>
+                
+                  <a href="https://cknightx.github.io/tag/_lSk0csRV/">
+                    网络
+                    
+                  </a>
+                
+              </span>
+            
+          </div>
+          <div class="post-content">
+            <figure data-type="image" tabindex="1"><img src="https://i.loli.net/2021/04/14/PFfjywQZ7CcnRpG.png" alt="3.png" loading="lazy"></figure>
 <h1 id="三次握手">三次握手</h1>
 <figure data-type="image" tabindex="2"><img src="https://i.loli.net/2021/04/14/YPsuEFmT8nh1LwW.png" alt="1.png" loading="lazy"></figure>
 <ol>
@@ -339,703 +165,57 @@
 <li>服务端：发送的FIN ACK没有接收端，会不断超时重传，此时服务端处于LAST-ACK状态。此时，超过一定时间后，服务端主动断开。或有新的客户端接入，会发送SYN建立连接，此时SYN被忽略，并直接恢复FIN ACK，新客户端收到后会回复RST，复位服务端</li>
 </ul>
 
-            </div>
-            <div class="post-footer">
-  <ul class="post-copyright">
-    <li class="post-copyright-author">
-      <strong>本文作者：</strong>
-      
-    </li>
-    <li class="post-copyright-link">
-      <strong>本文链接：</strong>
-      <a href="https://cknightx.github.io/post/xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao/" title="详解TCP如何应对三次握手和四次挥手过程中的丢包">https://cknightx.github.io/post/xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao/</a>
-    </li>
-    <li class="post-copyright-license">
-      <strong>版权声明： </strong>
-      本博客所有文章除特别声明外，均采用<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fa fa-fw fa-creative-commons"></i> BY-NC-SA</a> 许可协议。转载请注明出处！
-    </li>
-  </ul>
-  <div class="tags">
-    
-      <a href="https://cknightx.github.io/tag/_lSk0csRV/"># 网络</a>
-    
-  </div>
-  <div class="nav">
-    <div class="nav-prev">
-      
-        <i class="fa fa-chevron-left"></i>
-        <a class="nav-pc-next" title="探究Reactor模式与Proactor模式" href="https://cknightx.github.io/post/tan-jiu-reactor-mo-shi-yu-proactor-mo-shi/">探究Reactor模式与Proactor模式</a class="nav-pc-next">
-        <a class="nav-mobile-prev" title="探究Reactor模式与Proactor模式" href="https://cknightx.github.io/post/tan-jiu-reactor-mo-shi-yu-proactor-mo-shi/">上一篇</a>
-      
-    </div>
-    <div class="nav-next">
-      
-        <a class="nav-pc-next" title="leetcode93. 复原IP地址" href="https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/">leetcode93. 复原IP地址</a>
-        <a class="nav-mobile-next" title="leetcode93. 复原IP地址" href="https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/">下一篇</a>
-        <i class="fa fa-chevron-right"></i>
-      
-    </div>
-  </div>
-</div>
-            
-  
-
           </div>
         </div>
+
+        
+          <div class="next-post">
+            <a class="purple-link" href="https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/">
+              <h3 class="post-title">
+                下一篇：leetcode93. 复原IP地址
+              </h3>
+            </a>
+          </div>
+          
       </div>
-    </div>
-    <div class="footer-box">
-  <footer class="footer">
-    <div class="copyright">
-      Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | © 2019-2020 Theme By <a href="https://github.com/hsxyhao/gridea-theme-next" target="_blank">HsxyHao</a>
-    </div>
-    <div class="poweredby">
-      Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a>
-    </div>
-  </footer>
-  
-  
-  <div class="pisces back-to-top" id="back_to_top">
-    <i class="fa fa-arrow-up"></i>
+
+      
+
+      <div class="site-footer">
+  <div class="slogan">a tale of melodies</div>
+  <div class="social-container">
     
-    <span class="scrollpercent">
-      <span id="back_to_top_text">0</span>%
-    </span>
+      
+    
+      
+    
+      
+    
+      
+    
+      
     
   </div>
-  
-    <div class="bg-img">
-      <img src="" />
-    </div>
-  
-  
-  
-    
-
-  
+  Powered by <a href="https://github.com/getgridea/gridea" target="_blank">Gridea</a> | <a class="rss" href="https://cknightx.github.io/atom.xml" target="_blank">RSS</a>
 </div>
-<script>
 
-  let sideBarOpen = 'sidebar-open';
-  let body = document.body;
-  let back2Top = document.querySelector('#back_to_top'),
-  back2TopText = document.querySelector('#back_to_top_text'),
-  drawerBox = document.querySelector('#drawer_box'),
-  rightSideBar = document.querySelector('.sidebar'),
-  viewport = document.querySelector('body');
 
-  function scrollAnimation(currentY, targetY) {
-   
-    let needScrollTop = targetY - currentY
-    let _currentY = currentY
-    setTimeout(() => {
-      const dist = Math.ceil(needScrollTop / 10)
-      _currentY += dist
-      window.scrollTo(_currentY, currentY)
-      if (needScrollTop > 10 || needScrollTop < -10) {
-        scrollAnimation(_currentY, targetY)
-      } else {
-        window.scrollTo(_currentY, targetY)
-      }
-    }, 1)
-  }
-
-  back2Top.addEventListener("click", function(e) {
-    scrollAnimation(document.scrollingElement.scrollTop, 0);
-    e.stopPropagation();
-    return false;
-  });
-  
-  window.addEventListener('scroll', function(e) {
-    let percent = document.scrollingElement.scrollTop / (document.scrollingElement.scrollHeight - document.scrollingElement.clientHeight) * 100;
-    if (percent > 1 && !back2Top.classList.contains('back-top-active')) {
-      back2Top.classList.add('back-top-active');
-    }
-    if (percent == 0) {
-      back2Top.classList.remove('back-top-active');
-    }
-    if (back2TopText) {
-      back2TopText.textContent = Math.floor(percent);
-    }
-  });
-
-  
-  let hasCacu = false;
-  window.onresize = function() {
-    if (window.width > 991) {
-      calcuHeight();
-    } else {
-      hasCacu = false;
-    }
-  }
-
-  function calcuHeight() {
-    // 动态调整站点概览高度
-    if (!hasCacu && back2Top.classList.contains('pisces') || back2Top.classList.contains('gemini')) {
-      let sideBar = document.querySelector('.sidebar');
-      let navUl = document.querySelector('#site_nav');
-      sideBar.style = 'margin-top:' + (navUl.offsetHeight + navUl.offsetTop + 15) + 'px;';
-      hasCacu = true;
-    }
-  }
-  calcuHeight();
-  
-  let open = false, MOTION_TIME = 300, RIGHT_MOVE_DIS = '320px';
-
-  if (drawerBox) {
-    let rightMotions = document.querySelectorAll('.right-motion');
-    let right = drawerBox.classList.contains('right');
-
-    let transitionDir = right ? "transition.slideRightIn" : "transition.slideLeftIn";
-
-    let openProp, closeProp;
-    if (right) {
-      openProp = {
-        paddingRight: RIGHT_MOVE_DIS 
-      };
-      closeProp = {
-        paddingRight: '0px'
-      };
-    } else {
-      openProp = {
-        paddingLeft: RIGHT_MOVE_DIS 
-      };
-      closeProp = {
-        paddingLeft: '0px'
-      };
-    }
-
-    drawerBox.onclick = function() {
-      open = !open;
-      window.Velocity(rightSideBar, 'stop');
-      window.Velocity(viewport, 'stop');
-      window.Velocity(rightMotions, 'stop');
-      if (open) {
-        window.Velocity(rightSideBar, {
-          width: RIGHT_MOVE_DIS
-        }, {
-          duration: MOTION_TIME,
-          begin: function() {
-            window.Velocity(rightMotions, transitionDir,{ });
-          }
-        })
-        window.Velocity(viewport, openProp,{
-          duration: MOTION_TIME
-        });
-      } else {
-        window.Velocity(rightSideBar, {
-          width: '0px'
-        }, {
-          duration: MOTION_TIME,
-          begin: function() {
-            window.Velocity(rightMotions, {
-              opacity: 0
-            });
-          }
-        })
-        window.Velocity(viewport, closeProp ,{
-          duration: MOTION_TIME
-        });
-      }
-      for (let i = 0; i < drawerBox.children.length; i++) {
-        drawerBox.children[i].classList.toggle('muse-line');
-      }
-      drawerBox.classList.toggle(sideBarOpen);
-    }
-  }
-
-  // 链接跳转
-  let newWindow = ''
-  if (newWindow === 'true') {
-    let links = document.querySelectorAll('.post-body a')
-    links.forEach(item => {
-      if (!item.classList.contains('btn')) {
-        item.setAttribute("target","_blank");
-      }
-    })
-  }
-  // 代码高亮
-  hljs.initHighlightingOnLoad();
-
-</script>
-    <div class="light-box" id="light_box"></div>
-<script>
-  let imgs = document.querySelectorAll('.post-body img');
-  let lightBox = document.querySelector('#light_box');
-  lightBox.addEventListener('mousedown', (e) => {
-    e.preventDefault()
-  })
-  lightBox.addEventListener('mousewheel', (e) => {
-    e.preventDefault()
-  })
-  let width = window.innerWidth * 0.8;
-  lightBox.onclick = () => {
-    let img = lightBox.querySelector('img');
-    lightBox.style = '';
-    img && img.remove();
-  }
-  imgs.forEach(item => {
-    item.onclick = function (e) {
-      let lightImg = document.createElement('img');
-      lightImg.src = this.src;
-      lightBox.style = `height: 100%; opacity: 1; background-color: rgba(0, 0, 0, 0.5);cursor: zoom-out;`;
-      lightImg.style = `width: ${width}px; border: 1px solid #fff; border-radius: 2px;`;
-      lightImg.onclick = function () {
-        lightBox.style = '';
-        this.remove();
-      }
-      lightBox.append(lightImg);
-    }
-  })
-</script>
-  </div>
-</body>
-<input hidden id="copy" />
-<script>
-  //拿来主义(真香)^_^，Clipboard 实现摘自掘金 https://juejin.im/post/5aefeb6e6fb9a07aa43c20af
-  window.Clipboard = (function (window, document, navigator) {
-    var textArea,
-      copy;
-
-    // 判断是不是ios端
-    function isOS() {
-      return navigator.userAgent.match(/ipad|iphone/i);
-    }
-    //创建文本元素
-    function createTextArea(text) {
-      textArea = document.createElement('textArea');
-      textArea.value = text;
-      textArea.style.width = 0;
-      textArea.style.height = 0;
-      textArea.clientHeight = 0;
-      textArea.clientWidth = 0;
-      document.body.appendChild(textArea);
-    }
-    //选择内容
-    function selectText() {
-      var range,
-        selection;
-
-      if (isOS()) {
-        range = document.createRange();
-        range.selectNodeContents(textArea);
-        selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
-        textArea.setSelectionRange(0, 999999);
-      } else {
-        textArea.select();
-      }
-    }
-
-    //复制到剪贴板
-    function copyToClipboard() {
-      try {
-        document.execCommand("Copy")
-      } catch (err) {
-        alert("复制错误！请手动复制！")
-      }
-      document.body.removeChild(textArea);
-    }
-
-    copy = function (text) {
-      createTextArea(text);
-      selectText();
-      copyToClipboard();
-    };
-
-    return {
-      copy: copy
-    };
-  })(window, document, navigator);
-
-  function copyCode(e) {
-    if (e.srcElement.tagName === 'SPAN' && e.srcElement.classList.contains('copy-code')) {
-      let code = e.currentTarget.querySelector('code');
-      var text = code.innerText;
-      if (e.srcElement.textContent === '复制成功') {
-        console.log('复制操作频率过高');
-        return;
-      }
-      e.srcElement.textContent = '复制成功';
-      (function (elem) {
-        setTimeout(() => {
-          if (elem.textContent === '复制成功') {
-            elem.textContent = '复制代码'
-          }
-        }, 1000);
-      })(e.srcElement)
-      Clipboard.copy(text);
-    }
-  }
-
-  let pres = document.querySelectorAll('pre');
-  pres.forEach(pre => {
-    let code = pre.querySelector('code');
-    let copyElem = document.createElement('span');
-    copyElem.classList.add('copy-code');
-    copyElem.textContent = '复制代码';
-    pre.appendChild(copyElem);
-    pre.onclick = copyCode
-  })
-</script>
-<script src="/media/js/motion.js"></script>
-
-<script src="https://cdn.jsdelivr.net/gh/cferdinandi/smooth-scroll/dist/smooth-scroll.polyfills.min.js"></script>
-<script>
-  var scroll = new SmoothScroll('a[href*="#"]', {
-    speed: 500
-  });
-</script>
-
-<!-- <div class="search-mask" id="search_mask">
-  <div class="search-box">
-    <div class="search-title">
-      <i class="fa fa-search"></i>
-      <div class="input-box">
-        <input type="text" placeholder="搜索">
-      </div>
-      <i class="fa fa-times-circle"></i>
     </div>
-    <div class="result">
-      
-      <div class="item">
-        <a class="result-title" href="https://cknightx.github.io/post/tan-jiu-reactor-mo-shi-yu-proactor-mo-shi/"" data-c="
-          &lt;h1 id=&#34;reactor&#34;&gt;Reactor&lt;/h1&gt;
-&lt;p&gt;&lt;img src=&#34;https://i.loli.net/2021/04/15/TdoGwYXcmiNWRDn.png&#34; alt=&#34;QQ图片20210415175812.png&#34; loading=&#34;lazy&#34;&gt;&lt;br&gt;
-注：很多网络库的实现并非刻板的遵循上图中的架构，例如muduo，将Handler和EventHandler以Channel类表示。&lt;/p&gt;
-&lt;ul&gt;
-&lt;li&gt;Handler：本质上表示一种资源（文件描述符、socket描述符），该资源可以产生事件，所以也可以理解为事件源。&lt;/li&gt;
-&lt;li&gt;Synchronous Event Demultiplexer：本身是一个系统调用，用于同时等待多个事件发生。对应于Linux下的IO多路复用机制：select、poll、epoll。&lt;/li&gt;
-&lt;li&gt;Event Handler：事件处理器，与Handler绑定，指示当Handler产生事件时应如何去处理。&lt;/li&gt;
-&lt;li&gt;Initiation Dispatcher：模式中的核心Reactor角色，提供了事件的注册和删除等设施。它通过Demultiplexer来等待Handler产生事件，一旦有事件产生，针对每个事件调用其对应的Event Handler完成事件处理。&lt;/li&gt;
-&lt;/ul&gt;
-&lt;p&gt;从一个Reactor模式网络库使用者的角度来看，它提供了这样一种功能：我告诉它感兴趣的事件（注册事件源），以及事件的处理方式（注册回调函数），当有事件源产生了事件时，Reactor会去调用对应事件的处理器，完成事件的处理。&lt;/p&gt;
-&lt;h1 id=&#34;proactor&#34;&gt;Proactor&lt;/h1&gt;
-&lt;p&gt;和Reactor模式的区别在于对于socket的读写操作是由谁来完成。Reactor模式下，监测到的事件是“可读”or“可写”。即事件处理的过程中需要包含主动对socket读取和写入的过程。而在Proactor模式下， 监测到的事件是“读取完毕”or“写入完毕”。事件处理过程不需要主动的读或写socket，这个读写过程已经由&lt;strong&gt;内核&lt;/strong&gt;完成了。&lt;br&gt;
-这里可能会有疑问，诸如muduo这样的网络库，注册事件回调时也不用考虑对socket的读写，而是可以直接操作buffer中的数据呀。是这样没错，但是这个屁股是网络库帮你擦的，而不是内核，读写操作依然是在用户态线程中完成的。使用同步IO方式无法实现真正的Proactor模式，但是可以将之封装为与Proactor模式相同的接口，这样在用户的层面上就和Proactor模式的使用方法一致了。&lt;/p&gt;
-&lt;hr&gt;
-&lt;p&gt;以下为个人理解部分：&lt;br&gt;
-为什么muduo和asio，注册的回调函数都是在数据已经被读取完毕的前提下，而muduo自称是reactor模式，boost自称是proactor模式呢？&lt;br&gt;
-asio提供了这样一个函数&lt;code&gt;asio::ip::tcp::socket::async_read_some&lt;/code&gt;，第一个参数是读到的数据放在哪，第二个参数是读完了干啥。这是一个典型的proactor接口：我只关心“读取完毕”事件，所以注册过去的回调函数就是读完了干啥。而muduo则是通过注册onMessage函数，用户在注册该回调时，同样也是只用关心业务逻辑，读取的数据可以通过内置的buffer获取。但本质上，这是muduo提供给用户的封装好的更上层的接口。这个回调函数的实际意义是“每当收到客户端发来的消息之后应该干啥”，而不是“来了可读事件，我给你读完放到你指定的位置之后应该干啥”。muduo中与asio的&lt;code&gt;asio::ip::tcp::socket::async_read_some&lt;/code&gt;同层次的应该是在TcpConnection中将对socket的同步读取与用户onMessage封装到一起后作为回调注册给channel的过程，这显然是一个reactor接口。&lt;/p&gt;
-&lt;p&gt;其实也可以这么理解，asio实现的接口显然是proactor接口，而且在windows下使用iocp实现的asio确确实实是真正的proactor模式。在linux下，虽然不是真正的proactor，但是提供了和windows下一致的接口，所以属于模拟的proactor，其实本质就是reactor。只不过因为有真正的proactor再加上全平台一样的接口，所以常常就称之为proactor模式了。&lt;br&gt;
-而muduo只在linux下有实现，必然是reactor模型，但实际上封装出了类似于proactor的接口。&lt;/p&gt;
-&lt;p&gt;再来个理解，asio中的调用形式是：执行一个异步的读，且给这个读一个回调函数读完了干啥。 而muduo是直接注册一个回调函数，告诉接受到消息了要干啥，但实际上经过层层包装，注册给channel的回调本质上还是有可读事件了应该干啥。&lt;/p&gt;
-">探究Reactor模式与Proactor模式</a>
-      </div>
-      
-      <div class="item">
-        <a class="result-title" href="https://cknightx.github.io/post/xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao/"" data-c="
-          &lt;figure data-type=&#34;image&#34; tabindex=&#34;1&#34;&gt;&lt;img src=&#34;https://i.loli.net/2021/04/14/PFfjywQZ7CcnRpG.png&#34; alt=&#34;3.png&#34; loading=&#34;lazy&#34;&gt;&lt;/figure&gt;
-&lt;h1 id=&#34;三次握手&#34;&gt;三次握手&lt;/h1&gt;
-&lt;figure data-type=&#34;image&#34; tabindex=&#34;2&#34;&gt;&lt;img src=&#34;https://i.loli.net/2021/04/14/YPsuEFmT8nh1LwW.png&#34; alt=&#34;1.png&#34; loading=&#34;lazy&#34;&gt;&lt;/figure&gt;
-&lt;ol&gt;
-&lt;li&gt;客户端SYN丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：在超时时间内没收到服务端的ACK，就会超时重传SYN数据包。&lt;/li&gt;
-&lt;li&gt;服务端：无感知&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;2&#34;&gt;
-&lt;li&gt;服务端SYN ACK丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：认为服务端没收到SYN，所以触发重传，与1一致。&lt;/li&gt;
-&lt;li&gt;服务端：在超时时间没有收到客户端的ACK，同样触发重传。&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;3&#34;&gt;
-&lt;li&gt;客户端ACK丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：进入了ESTABLISHED状态，认为连接已经建立。&lt;/li&gt;
-&lt;li&gt;服务端：因为没有收到最后一个ACK包，依然处于SYN-RCVD状态。而此时，如果服务端接收到客户端传来的数据包，则会认为连接已经建立，并进入ESTABLISHED状态。&lt;/li&gt;
-&lt;/ul&gt;
-&lt;h1 id=&#34;四次挥手&#34;&gt;四次挥手&lt;/h1&gt;
-&lt;figure data-type=&#34;image&#34; tabindex=&#34;3&#34;&gt;&lt;img src=&#34;https://i.loli.net/2021/04/14/iwqReNflVFAZOyg.png&#34; alt=&#34;2.png&#34; loading=&#34;lazy&#34;&gt;&lt;/figure&gt;
-&lt;ol&gt;
-&lt;li&gt;客户端FIN丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：没收到ACK，超时重传&lt;/li&gt;
-&lt;li&gt;服务端：无感知&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;2&#34;&gt;
-&lt;li&gt;服务端ACK丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：同1&lt;/li&gt;
-&lt;li&gt;服务端：发送ACK后进入CLOSE_WAIT状态，开始做断开连接前的准备工作，准备好后，发送FIN ACK。这个消息是携带之前ACK的响应序列号的，只要这个消息没丢，客户端可以凭借这个FIN ACK包中的响应序号直接从FIN-WAIT-1状态进入TIME_WAIT状态&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;3&#34;&gt;
-&lt;li&gt;服务端FIN ACK丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：如果2中的ACK丢了，则客户端此时处于FIN-WAIT-1状态，同1。如果2中的ACK没丢，则进入FIN-WAIT-2状态，原地等待。但FIN-WAIT-2可以通过&lt;code&gt;tcp_fin_timeout&lt;/code&gt;参数设置超时时间，超过时间直接转到CLOSED&lt;/li&gt;
-&lt;li&gt;服务端：迟迟没收到客户端确认，超时重传&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;4&#34;&gt;
-&lt;li&gt;客户端ACK丢包&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：进入TIME_WAIT状态，开始2MSL的等待&lt;/li&gt;
-&lt;li&gt;服务端：没有收到ACK，会重传FIN ACK，直到服务端重试超时后主动断开。或等待新的客户端接入后，收到服务端重试的FIN ACK消息后，回复RST消息，收到RST消息后，服务端复位&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;5&#34;&gt;
-&lt;li&gt;第二次挥手后，服务端跑路&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：进入FIN-WAIT-2状态，等待服务端段FIN。但可以设置超时时间&lt;/li&gt;
-&lt;li&gt;服务端：跑路了&lt;/li&gt;
-&lt;/ul&gt;
-&lt;ol start=&#34;6&#34;&gt;
-&lt;li&gt;第二次挥手后，客户端跑路&lt;/li&gt;
-&lt;/ol&gt;
-&lt;ul&gt;
-&lt;li&gt;客户端：跑路了&lt;/li&gt;
-&lt;li&gt;服务端：发送的FIN ACK没有接收端，会不断超时重传，此时服务端处于LAST-ACK状态。此时，超过一定时间后，服务端主动断开。或有新的客户端接入，会发送SYN建立连接，此时SYN被忽略，并直接恢复FIN ACK，新客户端收到后会回复RST，复位服务端&lt;/li&gt;
-&lt;/ul&gt;
-">详解TCP如何应对三次握手和四次挥手过程中的丢包</a>
-      </div>
-      
-      <div class="item">
-        <a class="result-title" href="https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/"" data-c="
-          &lt;p&gt;这题就是回溯，但是看面经考察还蛮频繁的，所以记录一下。&lt;/p&gt;
-&lt;pre&gt;&lt;code class=&#34;language-c++&#34;&gt;class Solution {
-public:
-    vector&amp;lt;string&amp;gt; res;
-    vector&amp;lt;string&amp;gt; restoreIpAddresses(string s) {
-        if (s.size()&amp;gt;12 || s.size()&amp;lt;4) return {};
-        vector&amp;lt;string&amp;gt; tmp;
-        dfs(s,0,tmp);
-        return res;
-    }
-    void dfs(const string&amp;amp; s,int index,vector&amp;lt;string&amp;gt;&amp;amp; tmp)
-    {
-        // 超过了4段，guna！
-        if (tmp.size()&amp;gt;4) return;
-        // 处理完整个串，且刚好有4段，说明得到了一个正确结果
-        if (index&amp;gt;=s.size() &amp;amp;&amp;amp; tmp.size()==4)
-        {
-            string ip_address;
-            for (int i=0;i&amp;lt;tmp.size()-1;++i)
-            {
-                ip_address.append(tmp[i]);
-                ip_address.push_back(&#39;.&#39;);
-            }
-            ip_address.append(tmp.back());
-            res.push_back(ip_address);
-            return;
-        }
-        // 每次尝试选取1-3个字符作为一段
-        for (int i=1;i&amp;lt;=3;++i)
-        {
-            if (index+i&amp;gt;s.size()) break;
-            auto token=s.substr(index,i);
-            // 排除xxx.011.xxx
-            if (token.size()&amp;gt;1 &amp;amp;&amp;amp; token[0]==&#39;0&#39;) break;3
-            // 排除xxx.512.xxx
-            if (stoi(token)&amp;gt;255) break;
-            tmp.push_back(token);
-            dfs(s,index+i,tmp);
-            tmp.pop_back();
-        }
-    }
-};
-&lt;/code&gt;&lt;/pre&gt;
-">leetcode93. 复原IP地址</a>
-      </div>
-      
-      <div class="item">
-        <a class="result-title" href="https://cknightx.github.io/post/lru-yu-lfu-suan-fa-shi-xian/"" data-c="
-          &lt;h1 id=&#34;lru&#34;&gt;LRU&lt;/h1&gt;
-&lt;p&gt;LRU(Least Recently Used)，即最近最少使用。其主要思想是：如果数据最近被访问过，那么将来被访问的几率也更高。&lt;br&gt;
-使用双向链表存储，用unordered_map作索引，以实现O(1)的查询和置换。&lt;/p&gt;
-&lt;pre&gt;&lt;code class=&#34;language-c++&#34;&gt;using Node = pair&amp;lt;int, int&amp;gt;;
+    <script type="application/javascript">
 
-class LRUCache
-{
-public:
-	LRUCache(int capacity)
-		:capacity_(capacity){}
-	void set(int key,int value)
-	{
-		auto iter = mp_.find(key);
-		// 在缓存中
-		if (iter != mp_.end())
-		{
-			// 将页面移动至链表头部
-			list_.erase(iter-&amp;gt;second);
-			list_.emplace_back(key, value);
-			mp_[key] = list_.begin();
-		}
-		// 不在缓存中
-		else
-		{
-			// 缓存空间满
-			if (list_.size() &amp;gt;= capacity_)
-			{
-				// 删除链表尾部页面，以及mp中的缓存
-				mp_.erase(list_.back().first);
-				list_.pop_back();
-			}
-			// 装入新页面
-			list_.emplace_front(key, value);
-			mp_[key] = list_.begin();
-		}
-	}
-	int get(int key)
-	{
-		auto iter = mp_.find(key);
-		// 页面不存在
-		if (iter == mp_.end())
-		{
-			return -1;
-		}
-		// 页面存在，要将其移动至链表头部
-		list_.emplace_front(key, iter-&amp;gt;second-&amp;gt;second);
-		list_.erase(iter-&amp;gt;second);
+hljs.initHighlightingOnLoad()
 
-		mp_[key] = list_.begin();
-		return iter-&amp;gt;second-&amp;gt;second;
-	}
-private:
-	int capacity_;
-	int node_num_;
-	list&amp;lt;Node&amp;gt; list_;
-	unordered_map&amp;lt;int, list&amp;lt;Node&amp;gt;::iterator&amp;gt; mp_;
-};
-int main()
-{
-	LRUCache lru(2);
-	lru.set(1, 1);
-	lru.set(2, 2);
-	cout &amp;lt;&amp;lt; lru.get(1)&amp;lt;&amp;lt;endl;
-	lru.set(3, 3);
-	cout &amp;lt;&amp;lt; lru.get(2)&amp;lt;&amp;lt;endl;
-	lru.set(4, 4);
-	cout &amp;lt;&amp;lt; lru.get(1)&amp;lt;&amp;lt;endl;
-	cout &amp;lt;&amp;lt; lru.get(3)&amp;lt;&amp;lt;endl;
-	cout &amp;lt;&amp;lt; lru.get(4)&amp;lt;&amp;lt;endl;
-	cin.get();
-    // 1 -1 -1 3 4
-}
-&lt;/code&gt;&lt;/pre&gt;
-&lt;h1 id=&#34;lfu&#34;&gt;LFU&lt;/h1&gt;
-&lt;p&gt;LFU(Least frequently used)，最不经常使用。其主要思想是：如果一个数据在最近一段时间内使用次数很少，那么在将来一段时间内被使用的可能性也很小。&lt;br&gt;
-使用双ordered_map，一个用来查找对应页面，一个用来查找对应计数的页面链表&lt;/p&gt;
-&lt;pre&gt;&lt;code class=&#34;language-c++&#34;&gt;struct Node
-{
-	int key, value, count;
-	Node(int k,int v,int c):key(k),value(v),count(c){}
-};
-class LFUCache
-{
-public:
-	LFUCache(int capacity)
-		:capacity_(capacity){}
-	int get(int key)
-	{
-		auto iter = mp_key.find(key);
-		// 页面存在
-		if (iter != mp_key.end())
-		{
-			int cnt = iter-&amp;gt;second-&amp;gt;count;
-			int val = iter-&amp;gt;second-&amp;gt;value;
-			// 访问次数+1，放到对应的链表头部
-			mp_count[cnt + 1].emplace_front(iter-&amp;gt;second-&amp;gt;key,val, cnt + 1);
-			mp_count[cnt].erase(iter-&amp;gt;second);
-			// 更新最小访问次数，如果访问为N次的页面已经全部被移除，则最小访问次数为N+1
-			if (min_count_ == cnt &amp;amp;&amp;amp; mp_count[cnt].empty())
-				++min_count_;
-			mp_key[key] = mp_count[cnt + 1].begin();
-			return val;
-		}
-		return -1;
-	}
-	void set(int key, int value)
-	{
-		auto iter = mp_key.find(key);
-		// 更新
-		if (iter != mp_key.end())
-		{
-			get(key);
-			auto new_pos_iter = mp_key[key];
-			new_pos_iter-&amp;gt;value = value;
-		}
-		// 插入新节点
-		else
-		{
-			// 满了
-			if (mp_key.size() &amp;gt;= capacity_)
-			{
-				// 删除计数最少且最早出现的
-				int need_delete_key = mp_count[min_count_].back().key;
-				mp_count[min_count_].pop_back();
-				mp_key.erase(need_delete_key);
-			}
-			// 新加入的引用计数为1
-			mp_count[1].emplace_front(key, value, 1);
-			mp_key[key] = mp_count[1].begin();
-			// 插入新节点，所以最小计数必然为1
-			min_count_ = 1;
-		}
-	}
-private:
-	unordered_map&amp;lt;int, list&amp;lt;Node&amp;gt;::iterator&amp;gt; mp_key;
-	unordered_map&amp;lt;int, list&amp;lt;Node&amp;gt;&amp;gt; mp_count;
-	int min_count_ = 1;
-	int capacity_;
-};
+var app = new Vue({
+  el: '#app',
+  data: {
+    menuVisible: false,
+  },
+})
 
-int main()
-{
-	LFUCache lfu(2);
-	lfu.set(1, 1);
-	lfu.set(2, 2);
-	cout &amp;lt;&amp;lt; lfu.get(1) &amp;lt;&amp;lt; endl;
-	lfu.set(3, 3);
-	cout &amp;lt;&amp;lt; lfu.get(2) &amp;lt;&amp;lt; endl;
-	cout &amp;lt;&amp;lt; lfu.get(3) &amp;lt;&amp;lt; endl;
-	lfu.set(4, 4);
-	cout &amp;lt;&amp;lt; lfu.get(1) &amp;lt;&amp;lt; endl;
-	cout &amp;lt;&amp;lt; lfu.get(3) &amp;lt;&amp;lt; endl;
-	cout &amp;lt;&amp;lt; lfu.get(4) &amp;lt;&amp;lt; endl;
-	cin.get();
-	// 1 -1 3 -1 3 4
-}
-&lt;/code&gt;&lt;/pre&gt;
-&lt;h1 id=&#34;区别&#34;&gt;区别&lt;/h1&gt;
-&lt;p&gt;二者的区别主要在于，LRU以最近使用时间为参考，LFU以引用计数和最近使用时间两个维度为参考。&lt;/p&gt;
-">LRU与LFU算法实现</a>
-      </div>
-      
-      <div class="item">
-        <a class="result-title" href="https://cknightx.github.io/post/about/"" data-c="
-          &lt;p&gt;正在学习C++后台开发的渣渣&lt;/p&gt;
-">关于</a>
-      </div>
-      
-    </div>
-  </div>
-</div>
-<script>
-  // var escape = "[{&#34;content&#34;:&#34;&lt;h1 id=\&#34;reactor\&#34;&gt;Reactor&lt;/h1&gt;\n&lt;p&gt;&lt;img src=\&#34;https://i.loli.net/2021/04/15/TdoGwYXcmiNWRDn.png\&#34; alt=\&#34;QQ图片20210415175812.png\&#34; loading=\&#34;lazy\&#34;&gt;&lt;br&gt;\n注：很多网络库的实现并非刻板的遵循上图中的架构，例如muduo，将Handler和EventHandler以Channel类表示。&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;Handler：本质上表示一种资源（文件描述符、socket描述符），该资源可以产生事件，所以也可以理解为事件源。&lt;/li&gt;\n&lt;li&gt;Synchronous Event Demultiplexer：本身是一个系统调用，用于同时等待多个事件发生。对应于Linux下的IO多路复用机制：select、poll、epoll。&lt;/li&gt;\n&lt;li&gt;Event Handler：事件处理器，与Handler绑定，指示当Handler产生事件时应如何去处理。&lt;/li&gt;\n&lt;li&gt;Initiation Dispatcher：模式中的核心Reactor角色，提供了事件的注册和删除等设施。它通过Demultiplexer来等待Handler产生事件，一旦有事件产生，针对每个事件调用其对应的Event Handler完成事件处理。&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;从一个Reactor模式网络库使用者的角度来看，它提供了这样一种功能：我告诉它感兴趣的事件（注册事件源），以及事件的处理方式（注册回调函数），当有事件源产生了事件时，Reactor会去调用对应事件的处理器，完成事件的处理。&lt;/p&gt;\n&lt;h1 id=\&#34;proactor\&#34;&gt;Proactor&lt;/h1&gt;\n&lt;p&gt;和Reactor模式的区别在于对于socket的读写操作是由谁来完成。Reactor模式下，监测到的事件是“可读”or“可写”。即事件处理的过程中需要包含主动对socket读取和写入的过程。而在Proactor模式下， 监测到的事件是“读取完毕”or“写入完毕”。事件处理过程不需要主动的读或写socket，这个读写过程已经由&lt;strong&gt;内核&lt;/strong&gt;完成了。&lt;br&gt;\n这里可能会有疑问，诸如muduo这样的网络库，注册事件回调时也不用考虑对socket的读写，而是可以直接操作buffer中的数据呀。是这样没错，但是这个屁股是网络库帮你擦的，而不是内核，读写操作依然是在用户态线程中完成的。使用同步IO方式无法实现真正的Proactor模式，但是可以将之封装为与Proactor模式相同的接口，这样在用户的层面上就和Proactor模式的使用方法一致了。&lt;/p&gt;\n&lt;hr&gt;\n&lt;p&gt;以下为个人理解部分：&lt;br&gt;\n为什么muduo和asio，注册的回调函数都是在数据已经被读取完毕的前提下，而muduo自称是reactor模式，boost自称是proactor模式呢？&lt;br&gt;\nasio提供了这样一个函数&lt;code&gt;asio::ip::tcp::socket::async_read_some&lt;/code&gt;，第一个参数是读到的数据放在哪，第二个参数是读完了干啥。这是一个典型的proactor接口：我只关心“读取完毕”事件，所以注册过去的回调函数就是读完了干啥。而muduo则是通过注册onMessage函数，用户在注册该回调时，同样也是只用关心业务逻辑，读取的数据可以通过内置的buffer获取。但本质上，这是muduo提供给用户的封装好的更上层的接口。这个回调函数的实际意义是“每当收到客户端发来的消息之后应该干啥”，而不是“来了可读事件，我给你读完放到你指定的位置之后应该干啥”。muduo中与asio的&lt;code&gt;asio::ip::tcp::socket::async_read_some&lt;/code&gt;同层次的应该是在TcpConnection中将对socket的同步读取与用户onMessage封装到一起后作为回调注册给channel的过程，这显然是一个reactor接口。&lt;/p&gt;\n&lt;p&gt;其实也可以这么理解，asio实现的接口显然是proactor接口，而且在windows下使用iocp实现的asio确确实实是真正的proactor模式。在linux下，虽然不是真正的proactor，但是提供了和windows下一致的接口，所以属于模拟的proactor，其实本质就是reactor。只不过因为有真正的proactor再加上全平台一样的接口，所以常常就称之为proactor模式了。&lt;br&gt;\n而muduo只在linux下有实现，必然是reactor模型，但实际上封装出了类似于proactor的接口。&lt;/p&gt;\n&lt;p&gt;再来个理解，asio中的调用形式是：执行一个异步的读，且给这个读一个回调函数读完了干啥。 而muduo是直接注册一个回调函数，告诉接受到消息了要干啥，但实际上经过层层包装，注册给channel的回调本质上还是有可读事件了应该干啥。&lt;/p&gt;\n&#34;,&#34;fileName&#34;:&#34;tan-jiu-reactor-mo-shi-yu-proactor-mo-shi&#34;,&#34;abstract&#34;:&#34;&#34;,&#34;title&#34;:&#34;探究Reactor模式与Proactor模式&#34;,&#34;tags&#34;:[],&#34;date&#34;:&#34;2021-04-15 17:17:46&#34;,&#34;dateFormat&#34;:&#34;2021-04-15&#34;,&#34;feature&#34;:&#34;&#34;,&#34;link&#34;:&#34;https://cknightx.github.io/post/tan-jiu-reactor-mo-shi-yu-proactor-mo-shi/&#34;,&#34;hideInList&#34;:false,&#34;isTop&#34;:false,&#34;stats&#34;:{&#34;text&#34;:&#34;4 min read&#34;,&#34;time&#34;:230000,&#34;words&#34;:1090,&#34;minutes&#34;:4},&#34;description&#34;:&#34;Reactor\n\n注：很多网络库的实现并非刻板的遵循上图中的架构，例如muduo，将Handler和EventHandler以Channel类表示。\n\nHandler：本质上表示一种资源（文件描述符、socket描述符），该资源可以产生事件...&#34;,&#34;toc&#34;:&#34;&lt;ul class=\&#34;markdownIt-TOC\&#34;&gt;\n&lt;li&gt;&lt;a href=\&#34;#reactor\&#34;&gt;Reactor&lt;/a&gt;&lt;/li&gt;\n&lt;li&gt;&lt;a href=\&#34;#proactor\&#34;&gt;Proactor&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n&#34;},{&#34;content&#34;:&#34;&lt;figure data-type=\&#34;image\&#34; tabindex=\&#34;1\&#34;&gt;&lt;img src=\&#34;https://i.loli.net/2021/04/14/PFfjywQZ7CcnRpG.png\&#34; alt=\&#34;3.png\&#34; loading=\&#34;lazy\&#34;&gt;&lt;/figure&gt;\n&lt;h1 id=\&#34;三次握手\&#34;&gt;三次握手&lt;/h1&gt;\n&lt;figure data-type=\&#34;image\&#34; tabindex=\&#34;2\&#34;&gt;&lt;img src=\&#34;https://i.loli.net/2021/04/14/YPsuEFmT8nh1LwW.png\&#34; alt=\&#34;1.png\&#34; loading=\&#34;lazy\&#34;&gt;&lt;/figure&gt;\n&lt;ol&gt;\n&lt;li&gt;客户端SYN丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：在超时时间内没收到服务端的ACK，就会超时重传SYN数据包。&lt;/li&gt;\n&lt;li&gt;服务端：无感知&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;2\&#34;&gt;\n&lt;li&gt;服务端SYN ACK丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：认为服务端没收到SYN，所以触发重传，与1一致。&lt;/li&gt;\n&lt;li&gt;服务端：在超时时间没有收到客户端的ACK，同样触发重传。&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;3\&#34;&gt;\n&lt;li&gt;客户端ACK丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：进入了ESTABLISHED状态，认为连接已经建立。&lt;/li&gt;\n&lt;li&gt;服务端：因为没有收到最后一个ACK包，依然处于SYN-RCVD状态。而此时，如果服务端接收到客户端传来的数据包，则会认为连接已经建立，并进入ESTABLISHED状态。&lt;/li&gt;\n&lt;/ul&gt;\n&lt;h1 id=\&#34;四次挥手\&#34;&gt;四次挥手&lt;/h1&gt;\n&lt;figure data-type=\&#34;image\&#34; tabindex=\&#34;3\&#34;&gt;&lt;img src=\&#34;https://i.loli.net/2021/04/14/iwqReNflVFAZOyg.png\&#34; alt=\&#34;2.png\&#34; loading=\&#34;lazy\&#34;&gt;&lt;/figure&gt;\n&lt;ol&gt;\n&lt;li&gt;客户端FIN丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：没收到ACK，超时重传&lt;/li&gt;\n&lt;li&gt;服务端：无感知&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;2\&#34;&gt;\n&lt;li&gt;服务端ACK丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：同1&lt;/li&gt;\n&lt;li&gt;服务端：发送ACK后进入CLOSE_WAIT状态，开始做断开连接前的准备工作，准备好后，发送FIN ACK。这个消息是携带之前ACK的响应序列号的，只要这个消息没丢，客户端可以凭借这个FIN ACK包中的响应序号直接从FIN-WAIT-1状态进入TIME_WAIT状态&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;3\&#34;&gt;\n&lt;li&gt;服务端FIN ACK丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：如果2中的ACK丢了，则客户端此时处于FIN-WAIT-1状态，同1。如果2中的ACK没丢，则进入FIN-WAIT-2状态，原地等待。但FIN-WAIT-2可以通过&lt;code&gt;tcp_fin_timeout&lt;/code&gt;参数设置超时时间，超过时间直接转到CLOSED&lt;/li&gt;\n&lt;li&gt;服务端：迟迟没收到客户端确认，超时重传&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;4\&#34;&gt;\n&lt;li&gt;客户端ACK丢包&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：进入TIME_WAIT状态，开始2MSL的等待&lt;/li&gt;\n&lt;li&gt;服务端：没有收到ACK，会重传FIN ACK，直到服务端重试超时后主动断开。或等待新的客户端接入后，收到服务端重试的FIN ACK消息后，回复RST消息，收到RST消息后，服务端复位&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;5\&#34;&gt;\n&lt;li&gt;第二次挥手后，服务端跑路&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：进入FIN-WAIT-2状态，等待服务端段FIN。但可以设置超时时间&lt;/li&gt;\n&lt;li&gt;服务端：跑路了&lt;/li&gt;\n&lt;/ul&gt;\n&lt;ol start=\&#34;6\&#34;&gt;\n&lt;li&gt;第二次挥手后，客户端跑路&lt;/li&gt;\n&lt;/ol&gt;\n&lt;ul&gt;\n&lt;li&gt;客户端：跑路了&lt;/li&gt;\n&lt;li&gt;服务端：发送的FIN ACK没有接收端，会不断超时重传，此时服务端处于LAST-ACK状态。此时，超过一定时间后，服务端主动断开。或有新的客户端接入，会发送SYN建立连接，此时SYN被忽略，并直接恢复FIN ACK，新客户端收到后会回复RST，复位服务端&lt;/li&gt;\n&lt;/ul&gt;\n&#34;,&#34;fileName&#34;:&#34;xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao&#34;,&#34;abstract&#34;:&#34;&#34;,&#34;title&#34;:&#34;详解TCP如何应对三次握手和四次挥手过程中的丢包&#34;,&#34;tags&#34;:[{&#34;index&#34;:-1,&#34;name&#34;:&#34;网络&#34;,&#34;slug&#34;:&#34;_lSk0csRV&#34;,&#34;used&#34;:true,&#34;link&#34;:&#34;https://cknightx.github.io/tag/_lSk0csRV/&#34;}],&#34;date&#34;:&#34;2021-04-14 21:10:06&#34;,&#34;dateFormat&#34;:&#34;2021-04-14&#34;,&#34;feature&#34;:&#34;&#34;,&#34;link&#34;:&#34;https://cknightx.github.io/post/xiang-jie-tcp-ru-he-ying-dui-san-ci-wo-shou-he-si-ci-hui-shou-guo-cheng-zhong-de-diu-bao/&#34;,&#34;hideInList&#34;:false,&#34;isTop&#34;:false,&#34;stats&#34;:{&#34;text&#34;:&#34;3 min read&#34;,&#34;time&#34;:138000,&#34;words&#34;:634,&#34;minutes&#34;:3},&#34;description&#34;:&#34;\n三次握手\n\n\n客户端SYN丢包\n\n\n客户端：在超时时间内没收到服务端的ACK，就会超时重传SYN数据包。\n服务端：无感知\n\n\n服务端SYN ACK丢包\n\n\n客户端：认为服务端没收到SYN，所以触发重传，与1一致。\n服务端：在超时时间没有收...&#34;,&#34;toc&#34;:&#34;&lt;ul class=\&#34;markdownIt-TOC\&#34;&gt;\n&lt;li&gt;&lt;a href=\&#34;#%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B\&#34;&gt;三次握手&lt;/a&gt;&lt;/li&gt;\n&lt;li&gt;&lt;a href=\&#34;#%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B\&#34;&gt;四次挥手&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n&#34;},{&#34;content&#34;:&#34;&lt;p&gt;这题就是回溯，但是看面经考察还蛮频繁的，所以记录一下。&lt;/p&gt;\n&lt;pre&gt;&lt;code class=\&#34;language-c++\&#34;&gt;class Solution {\npublic:\n    vector&amp;lt;string&amp;gt; res;\n    vector&amp;lt;string&amp;gt; restoreIpAddresses(string s) {\n        if (s.size()&amp;gt;12 || s.size()&amp;lt;4) return {};\n        vector&amp;lt;string&amp;gt; tmp;\n        dfs(s,0,tmp);\n        return res;\n    }\n    void dfs(const string&amp;amp; s,int index,vector&amp;lt;string&amp;gt;&amp;amp; tmp)\n    {\n        // 超过了4段，guna！\n        if (tmp.size()&amp;gt;4) return;\n        // 处理完整个串，且刚好有4段，说明得到了一个正确结果\n        if (index&amp;gt;=s.size() &amp;amp;&amp;amp; tmp.size()==4)\n        {\n            string ip_address;\n            for (int i=0;i&amp;lt;tmp.size()-1;++i)\n            {\n                ip_address.append(tmp[i]);\n                ip_address.push_back(&#39;.&#39;);\n            }\n            ip_address.append(tmp.back());\n            res.push_back(ip_address);\n            return;\n        }\n        // 每次尝试选取1-3个字符作为一段\n        for (int i=1;i&amp;lt;=3;++i)\n        {\n            if (index+i&amp;gt;s.size()) break;\n            auto token=s.substr(index,i);\n            // 排除xxx.011.xxx\n            if (token.size()&amp;gt;1 &amp;amp;&amp;amp; token[0]==&#39;0&#39;) break;3\n            // 排除xxx.512.xxx\n            if (stoi(token)&amp;gt;255) break;\n            tmp.push_back(token);\n            dfs(s,index+i,tmp);\n            tmp.pop_back();\n        }\n    }\n};\n&lt;/code&gt;&lt;/pre&gt;\n&#34;,&#34;fileName&#34;:&#34;leetcode93-fu-yuan-ip-di-zhi&#34;,&#34;abstract&#34;:&#34;&#34;,&#34;title&#34;:&#34;leetcode93. 复原IP地址&#34;,&#34;tags&#34;:[{&#34;index&#34;:-1,&#34;name&#34;:&#34;算法&#34;,&#34;slug&#34;:&#34;IljIGIEjm&#34;,&#34;used&#34;:true,&#34;link&#34;:&#34;https://cknightx.github.io/tag/IljIGIEjm/&#34;}],&#34;date&#34;:&#34;2021-04-14 15:17:03&#34;,&#34;dateFormat&#34;:&#34;2021-04-14&#34;,&#34;feature&#34;:&#34;&#34;,&#34;link&#34;:&#34;https://cknightx.github.io/post/leetcode93-fu-yuan-ip-di-zhi/&#34;,&#34;hideInList&#34;:false,&#34;isTop&#34;:false,&#34;stats&#34;:{&#34;text&#34;:&#34;2 min read&#34;,&#34;time&#34;:70000,&#34;words&#34;:219,&#34;minutes&#34;:2},&#34;description&#34;:&#34;这题就是回溯，但是看面经考察还蛮频繁的，所以记录一下。\nclass Solution {\npublic:\n    vector&amp;lt;string&amp;gt; res;\n    vector&amp;lt;string&amp;gt; restoreIpAdd...&#34;,&#34;toc&#34;:&#34;&#34;},{&#34;content&#34;:&#34;&lt;h1 id=\&#34;lru\&#34;&gt;LRU&lt;/h1&gt;\n&lt;p&gt;LRU(Least Recently Used)，即最近最少使用。其主要思想是：如果数据最近被访问过，那么将来被访问的几率也更高。&lt;br&gt;\n使用双向链表存储，用unordered_map作索引，以实现O(1)的查询和置换。&lt;/p&gt;\n&lt;pre&gt;&lt;code class=\&#34;language-c++\&#34;&gt;using Node = pair&amp;lt;int, int&amp;gt;;\n\nclass LRUCache\n{\npublic:\n\tLRUCache(int capacity)\n\t\t:capacity_(capacity){}\n\tvoid set(int key,int value)\n\t{\n\t\tauto iter = mp_.find(key);\n\t\t// 在缓存中\n\t\tif (iter != mp_.end())\n\t\t{\n\t\t\t// 将页面移动至链表头部\n\t\t\tlist_.erase(iter-&amp;gt;second);\n\t\t\tlist_.emplace_back(key, value);\n\t\t\tmp_[key] = list_.begin();\n\t\t}\n\t\t// 不在缓存中\n\t\telse\n\t\t{\n\t\t\t// 缓存空间满\n\t\t\tif (list_.size() &amp;gt;= capacity_)\n\t\t\t{\n\t\t\t\t// 删除链表尾部页面，以及mp中的缓存\n\t\t\t\tmp_.erase(list_.back().first);\n\t\t\t\tlist_.pop_back();\n\t\t\t}\n\t\t\t// 装入新页面\n\t\t\tlist_.emplace_front(key, value);\n\t\t\tmp_[key] = list_.begin();\n\t\t}\n\t}\n\tint get(int key)\n\t{\n\t\tauto iter = mp_.find(key);\n\t\t// 页面不存在\n\t\tif (iter == mp_.end())\n\t\t{\n\t\t\treturn -1;\n\t\t}\n\t\t// 页面存在，要将其移动至链表头部\n\t\tlist_.emplace_front(key, iter-&amp;gt;second-&amp;gt;second);\n\t\tlist_.erase(iter-&amp;gt;second);\n\n\t\tmp_[key] = list_.begin();\n\t\treturn iter-&amp;gt;second-&amp;gt;second;\n\t}\nprivate:\n\tint capacity_;\n\tint node_num_;\n\tlist&amp;lt;Node&amp;gt; list_;\n\tunordered_map&amp;lt;int, list&amp;lt;Node&amp;gt;::iterator&amp;gt; mp_;\n};\nint main()\n{\n\tLRUCache lru(2);\n\tlru.set(1, 1);\n\tlru.set(2, 2);\n\tcout &amp;lt;&amp;lt; lru.get(1)&amp;lt;&amp;lt;endl;\n\tlru.set(3, 3);\n\tcout &amp;lt;&amp;lt; lru.get(2)&amp;lt;&amp;lt;endl;\n\tlru.set(4, 4);\n\tcout &amp;lt;&amp;lt; lru.get(1)&amp;lt;&amp;lt;endl;\n\tcout &amp;lt;&amp;lt; lru.get(3)&amp;lt;&amp;lt;endl;\n\tcout &amp;lt;&amp;lt; lru.get(4)&amp;lt;&amp;lt;endl;\n\tcin.get();\n    // 1 -1 -1 3 4\n}\n&lt;/code&gt;&lt;/pre&gt;\n&lt;h1 id=\&#34;lfu\&#34;&gt;LFU&lt;/h1&gt;\n&lt;p&gt;LFU(Least frequently used)，最不经常使用。其主要思想是：如果一个数据在最近一段时间内使用次数很少，那么在将来一段时间内被使用的可能性也很小。&lt;br&gt;\n使用双ordered_map，一个用来查找对应页面，一个用来查找对应计数的页面链表&lt;/p&gt;\n&lt;pre&gt;&lt;code class=\&#34;language-c++\&#34;&gt;struct Node\n{\n\tint key, value, count;\n\tNode(int k,int v,int c):key(k),value(v),count(c){}\n};\nclass LFUCache\n{\npublic:\n\tLFUCache(int capacity)\n\t\t:capacity_(capacity){}\n\tint get(int key)\n\t{\n\t\tauto iter = mp_key.find(key);\n\t\t// 页面存在\n\t\tif (iter != mp_key.end())\n\t\t{\n\t\t\tint cnt = iter-&amp;gt;second-&amp;gt;count;\n\t\t\tint val = iter-&amp;gt;second-&amp;gt;value;\n\t\t\t// 访问次数+1，放到对应的链表头部\n\t\t\tmp_count[cnt + 1].emplace_front(iter-&amp;gt;second-&amp;gt;key,val, cnt + 1);\n\t\t\tmp_count[cnt].erase(iter-&amp;gt;second);\n\t\t\t// 更新最小访问次数，如果访问为N次的页面已经全部被移除，则最小访问次数为N+1\n\t\t\tif (min_count_ == cnt &amp;amp;&amp;amp; mp_count[cnt].empty())\n\t\t\t\t++min_count_;\n\t\t\tmp_key[key] = mp_count[cnt + 1].begin();\n\t\t\treturn val;\n\t\t}\n\t\treturn -1;\n\t}\n\tvoid set(int key, int value)\n\t{\n\t\tauto iter = mp_key.find(key);\n\t\t// 更新\n\t\tif (iter != mp_key.end())\n\t\t{\n\t\t\tget(key);\n\t\t\tauto new_pos_iter = mp_key[key];\n\t\t\tnew_pos_iter-&amp;gt;value = value;\n\t\t}\n\t\t// 插入新节点\n\t\telse\n\t\t{\n\t\t\t// 满了\n\t\t\tif (mp_key.size() &amp;gt;= capacity_)\n\t\t\t{\n\t\t\t\t// 删除计数最少且最早出现的\n\t\t\t\tint need_delete_key = mp_count[min_count_].back().key;\n\t\t\t\tmp_count[min_count_].pop_back();\n\t\t\t\tmp_key.erase(need_delete_key);\n\t\t\t}\n\t\t\t// 新加入的引用计数为1\n\t\t\tmp_count[1].emplace_front(key, value, 1);\n\t\t\tmp_key[key] = mp_count[1].begin();\n\t\t\t// 插入新节点，所以最小计数必然为1\n\t\t\tmin_count_ = 1;\n\t\t}\n\t}\nprivate:\n\tunordered_map&amp;lt;int, list&amp;lt;Node&amp;gt;::iterator&amp;gt; mp_key;\n\tunordered_map&amp;lt;int, list&amp;lt;Node&amp;gt;&amp;gt; mp_count;\n\tint min_count_ = 1;\n\tint capacity_;\n};\n\nint main()\n{\n\tLFUCache lfu(2);\n\tlfu.set(1, 1);\n\tlfu.set(2, 2);\n\tcout &amp;lt;&amp;lt; lfu.get(1) &amp;lt;&amp;lt; endl;\n\tlfu.set(3, 3);\n\tcout &amp;lt;&amp;lt; lfu.get(2) &amp;lt;&amp;lt; endl;\n\tcout &amp;lt;&amp;lt; lfu.get(3) &amp;lt;&amp;lt; endl;\n\tlfu.set(4, 4);\n\tcout &amp;lt;&amp;lt; lfu.get(1) &amp;lt;&amp;lt; endl;\n\tcout &amp;lt;&amp;lt; lfu.get(3) &amp;lt;&amp;lt; endl;\n\tcout &amp;lt;&amp;lt; lfu.get(4) &amp;lt;&amp;lt; endl;\n\tcin.get();\n\t// 1 -1 3 -1 3 4\n}\n&lt;/code&gt;&lt;/pre&gt;\n&lt;h1 id=\&#34;区别\&#34;&gt;区别&lt;/h1&gt;\n&lt;p&gt;二者的区别主要在于，LRU以最近使用时间为参考，LFU以引用计数和最近使用时间两个维度为参考。&lt;/p&gt;\n&#34;,&#34;fileName&#34;:&#34;lru-yu-lfu-suan-fa-shi-xian&#34;,&#34;abstract&#34;:&#34;&#34;,&#34;title&#34;:&#34;LRU与LFU算法实现&#34;,&#34;tags&#34;:[{&#34;index&#34;:-1,&#34;name&#34;:&#34;操作系统&#34;,&#34;slug&#34;:&#34;NQui_4wp5&#34;,&#34;used&#34;:true,&#34;link&#34;:&#34;https://cknightx.github.io/tag/NQui_4wp5/&#34;}],&#34;date&#34;:&#34;2021-04-14 09:08:28&#34;,&#34;dateFormat&#34;:&#34;2021-04-14&#34;,&#34;feature&#34;:&#34;&#34;,&#34;link&#34;:&#34;https://cknightx.github.io/post/lru-yu-lfu-suan-fa-shi-xian/&#34;,&#34;hideInList&#34;:false,&#34;isTop&#34;:false,&#34;stats&#34;:{&#34;text&#34;:&#34;5 min read&#34;,&#34;time&#34;:243000,&#34;words&#34;:805,&#34;minutes&#34;:5},&#34;description&#34;:&#34;LRU\nLRU(Least Recently Used)，即最近最少使用。其主要思想是：如果数据最近被访问过，那么将来被访问的几率也更高。\n使用双向链表存储，用unordered_map作索引，以实现O(1)的查询和置换。\nusing No...&#34;,&#34;toc&#34;:&#34;&lt;ul class=\&#34;markdownIt-TOC\&#34;&gt;\n&lt;li&gt;&lt;a href=\&#34;#lru\&#34;&gt;LRU&lt;/a&gt;&lt;/li&gt;\n&lt;li&gt;&lt;a href=\&#34;#lfu\&#34;&gt;LFU&lt;/a&gt;&lt;/li&gt;\n&lt;li&gt;&lt;a href=\&#34;#%E5%8C%BA%E5%88%AB\&#34;&gt;区别&lt;/a&gt;&lt;/li&gt;\n&lt;/ul&gt;\n&#34;},{&#34;content&#34;:&#34;&lt;p&gt;正在学习C++后台开发的渣渣&lt;/p&gt;\n&#34;,&#34;fileName&#34;:&#34;about&#34;,&#34;abstract&#34;:&#34;&#34;,&#34;title&#34;:&#34;关于&#34;,&#34;tags&#34;:[],&#34;date&#34;:&#34;2019-01-25 19:09:48&#34;,&#34;dateFormat&#34;:&#34;2019-01-25&#34;,&#34;feature&#34;:&#34;&#34;,&#34;link&#34;:&#34;https://cknightx.github.io/post/about/&#34;,&#34;hideInList&#34;:true,&#34;isTop&#34;:false,&#34;stats&#34;:{&#34;text&#34;:&#34;1 min read&#34;,&#34;time&#34;:2000,&#34;words&#34;:12,&#34;minutes&#34;:1},&#34;description&#34;:&#34;正在学习C++后台开发的渣渣\n&#34;,&#34;toc&#34;:&#34;&#34;}]";
-  // var json = escape.substr(1, escape.length - 2);
-  // var datas = json.split(',');
-  // for (let i=0; i < datas.length; i++) {
-  //   let item = datas[i];
-  //   let attrs = item.split('34;:&#34')
-  //   debugger
-  //   console.log(datas[i])
-  // }
-  let escapeMap = new Map();
-  escapeMap.set('&#34;', '"');
-  escapeMap.set('&gt;', '>');
-  escapeMap.set('&#39;', "'");
-  escapeMap.set('&lt;', '<');
-  escapeMap.set('&quot;', '"');
-  escapeMap.set('&amp;', '&');
-</script> -->
+</script>
 
 
+
+
+  </body>
 </html>
